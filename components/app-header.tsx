@@ -1,29 +1,36 @@
-import Link from "next/link";
-import { ShieldCheck } from "lucide-react";
-import { Badge } from "./ui/badge";
+"use client";
+
+import { usePathname } from "next/navigation";
+import PillNav, { type PillNavItem } from "./PillNav";
+
+const NAV_ITEMS: PillNavItem[] = [
+  { label: "Overview", href: "/", ariaLabel: "Overview" },
+  { label: "Applications", href: "/applications", ariaLabel: "Applications" },
+  {
+    label: "How it works",
+    href: "/#how-it-works",
+    ariaLabel: "How it works",
+  },
+  {
+    label: "Evidence model",
+    href: "/#evidence-model",
+    ariaLabel: "Evidence model",
+  },
+  { label: "MCP setup", href: "/mcp", ariaLabel: "MCP setup" },
+];
 
 export function AppHeader() {
+  const pathname = usePathname();
   return (
-    <header className="border-b bg-card">
-      <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-3 px-5 py-4">
-        <Link href="/" className="flex items-center gap-2.5">
-          <span className="flex size-9 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-            <ShieldCheck className="size-5" aria-hidden />
-          </span>
-          <span>
-            <span className="block text-sm leading-tight font-semibold">
-              Evidence Review
-            </span>
-            <span className="block text-xs text-muted-foreground">
-              Application readiness, C07 prototype
-            </span>
-          </span>
-        </Link>
-        <div className="ml-auto flex flex-wrap items-center gap-2">
-          <Badge variant="outline">Synthetic Data</Badge>
-          <Badge variant="secondary">AI assists, humans decide</Badge>
-        </div>
-      </div>
-    </header>
+    <PillNav
+      logo="/logo-mark.png"
+      logoAlt="EvidenceFlow home"
+      items={NAV_ITEMS}
+      activeHref={pathname}
+      baseColor="var(--card)"
+      pillColor="var(--primary)"
+      hoveredPillTextColor="var(--primary)"
+      pillTextColor="var(--primary-foreground)"
+    />
   );
 }

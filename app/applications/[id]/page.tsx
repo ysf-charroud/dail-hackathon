@@ -26,7 +26,6 @@ import { AnalysisPanel } from "@/components/analysis-panel";
 import { RequestPanel } from "@/components/request-panel";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import {
   Card,
   CardContent,
@@ -53,15 +52,14 @@ export default function ApplicationDetailPage() {
   if (!app) {
     return (
       <div className="flex flex-col items-start gap-3">
-        <Button variant="ghost" size="sm" onClick={() => router.push("/")}>
+        <Button variant="ghost" size="sm" onClick={() => router.push("/applications")}>
           <ArrowLeft data-icon="inline-start" aria-hidden /> Back to
           applications
         </Button>
         <Card>
           <CardContent className="pt-5">
             <p className="text-sm text-muted-foreground">
-              Application “{params.id}” was not found. It may have been removed
-              from the synthetic dataset.
+              Application “{params.id}” was not found. It may have been removed.
             </p>
           </CardContent>
         </Card>
@@ -161,7 +159,7 @@ export default function ApplicationDetailPage() {
   return (
     <div className="flex flex-col gap-5">
       <div className="flex flex-wrap items-center gap-2">
-        <Link href="/">
+        <Link href="/applications">
           <Button variant="ghost" size="sm">
             <ArrowLeft data-icon="inline-start" aria-hidden /> Applications
           </Button>
@@ -179,7 +177,7 @@ export default function ApplicationDetailPage() {
             setRequestSource(null);
           }}
         >
-          <RotateCcw data-icon="inline-start" aria-hidden /> Reset demo state
+          <RotateCcw data-icon="inline-start" aria-hidden /> Reset changes
         </Button>
       </div>
 
@@ -267,9 +265,6 @@ export default function ApplicationDetailPage() {
               <Separator />
               <p className="rounded-lg bg-muted p-3 text-muted-foreground">
                 {app.summary}
-              </p>
-              <p>
-                <Badge variant="outline">Synthetic record</Badge>
               </p>
             </CardContent>
           </Card>

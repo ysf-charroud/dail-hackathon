@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Evidence Review · C07 Prototype",
+  title: "ReviewOS · Evidence Review",
   description:
     "Human-led application evidence review: missing evidence and mismatch detection with AI assistance.",
 };
@@ -29,12 +29,12 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="flex min-h-full flex-col">
         <StoreProvider>
           <AppHeader />
-          <main className="mx-auto w-full max-w-6xl flex-1 px-5 py-6">
+          <main className="mx-auto w-full max-w-6xl flex-1 px-5 pt-20 pb-6">
             {children}
           </main>
           <footer className="border-t bg-card">
             <div className="mx-auto flex max-w-6xl flex-wrap gap-2 px-5 py-3 text-xs text-muted-foreground">
-              <span>C07 hackathon prototype, synthetic data only.</span>
+              <span>ReviewOS · Application evidence review.</span>
               <span className="ml-auto">
                 AI assists the reviewer. It never approves or rejects.
               </span>

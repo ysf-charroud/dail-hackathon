@@ -6,9 +6,9 @@ export default function NotFound() {
     <div className="flex flex-col items-start gap-3">
       <h1 className="text-xl font-bold">Page not found</h1>
       <p className="text-sm text-muted-foreground">
-        The page you requested does not exist in this prototype.
+        The page you requested does not exist.
       </p>
-      <Link href="/">
+      <Link href="/applications">
         <Button variant="outline" size="sm">
           Back to applications
         </Button>
