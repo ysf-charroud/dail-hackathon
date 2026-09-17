@@ -4,18 +4,41 @@ import type {
 } from "./types";
 import { analyzeDeterministic } from "./analysis";
 
-const BASE_URL =
-  process.env.OPENROUTER_BASE_URL?.trim() || "https://openrouter.ai/api/v1";
-// Team decision (2026-09-17): DeepSeek V4 Pro via OpenRouter. Overridable via env.
-const MODEL = process.env.OPENROUTER_MODEL?.trim() || "deepseek/deepseek-v4-pro";
+interface Provider {
+  key: string;
+  baseUrl: string;
+  model: string;
+}
 
-function apiKey(): string | null {
-  const k = process.env.OPENROUTER_API_KEY?.trim();
-  return k ? k : null;
+// Team decision (2026-09-17): DeepSeek direct API (deepseek-v4-pro).
+// Falls back to OpenRouter when only OpenRouter credentials are set.
+function provider(): Provider | null {
+  const deepseekKey = process.env.DEEPSEEK_API_KEY?.trim();
+  if (deepseekKey) {
+    return {
+      key: deepseekKey,
+      baseUrl:
+        process.env.DEEPSEEK_BASE_URL?.trim() || "https://api.deepseek.com",
+      model: process.env.DEEPSEEK_MODEL?.trim() || "deepseek-v4-pro",
+    };
+  }
+  const openRouterKey = process.env.OPENROUTER_API_KEY?.trim();
+  if (openRouterKey) {
+    return {
+      key: openRouterKey,
+      baseUrl:
+        process.env.OPENROUTER_BASE_URL?.trim() ||
+        "https://openrouter.ai/api/v1",
+      model:
+        process.env.OPENROUTER_MODEL?.trim() ||
+        "nvidia/nemotron-3-super-120b-a12b:free",
+    };
+  }
+  return null;
 }
 
 export function llmConfigured(): boolean {
-  return apiKey() !== null;
+  return provider() !== null;
 }
 
 const ANALYZE_SYSTEM = `You are an evidence-checking assistant for a human application reviewer.
@@ -32,30 +55,29 @@ Rules:
 - status: missing_evidence if any required item missing; else needs_clarification if any mismatch; else review_ready.
 - summary: 1-2 plain sentences for the reviewer.`;
 
-const REQUEST_SYSTEM = `You draft short, polite messages from a human reviewer to an applicant requesting missing evidence or clarification.
-Rules: NEVER approve or reject. Keep under 150 words. Plain text, no markdown headings. End by noting a human reviewer will assess the application once resolved.`;
+const REQUEST_SYSTEM = `You draft short, formal messages from a programme caseworker at a German charitable foundation to an applicant requesting missing evidence or clarification.
+Register: formal, respectful, precise. Address the applicant as "Dear <name>". Frame every point as guidance toward a complete, review-ready file — never as a verdict. Name each missing document and, for mismatches, quote both conflicting values and ask which is correct.
+Rules: NEVER approve or reject. NEVER imply a funding decision. Keep under 150 words. Plain text, no markdown headings. Close by noting a programme caseworker will review the file once complete.`;
 
 async function chat(
   system: string,
   user: string,
   maxTokens: number,
 ): Promise<string> {
-  const key = apiKey();
-  if (!key) throw new Error("LLM not configured");
+  const p = provider();
+  if (!p) throw new Error("LLM not configured");
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 15000);
+  const timer = setTimeout(() => controller.abort(), 20000);
   try {
-    const res = await fetch(`${BASE_URL}/chat/completions`, {
+    const res = await fetch(`${p.baseUrl}/chat/completions`, {
       method: "POST",
       signal: controller.signal,
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${key}`,
-        "HTTP-Referer": "https://c07-hackathon.local",
-        "X-Title": "C07 Evidence Review Prototype",
+        Authorization: `Bearer ${p.key}`,
       },
       body: JSON.stringify({
-        model: MODEL,
+        model: p.model,
         messages: [
           { role: "system", content: system },
           { role: "user", content: user },

@@ -22,7 +22,7 @@ const ListInput = z.strictObject({
 });
 
 const IdInput = z.strictObject({
-  id: z.string().min(1).max(20).describe("Application id, e.g. 'APP-101'."),
+  id: z.string().min(1).max(20).describe("Application id, e.g. 'APP-1'."),
   response_format: formatField,
 });
 
@@ -33,7 +33,7 @@ function findApp(id: string): ApplicationRecord | undefined {
 }
 
 function unknownIdError(id: string): string {
-  return `Error: Unknown application id '${id}'. Valid ids are APP-101, APP-102, APP-103. Call c07_list_applications first to browse them.`;
+  return `Error: Unknown application id '${id}'. Valid ids are APP-1, APP-2, APP-3. Call c07_list_applications first to browse them.`;
 }
 
 function completion(app: ApplicationRecord): number {
@@ -156,7 +156,7 @@ export function registerC07Tools(server: McpServer): void {
     "c07_get_application",
     {
       title: "Get C07 application detail",
-      description: `Get one synthetic application with full evidence items (read-only). Pass the APP-xxx id from c07_list_applications, e.g. {"id": "APP-102"}.`,
+      description: `Get one synthetic application with full evidence items (read-only). Pass the APP-xxx id from c07_list_applications, e.g. {"id": "APP-2"}.`,
       inputSchema: IdInput,
       annotations: {
         readOnlyHint: true,
@@ -191,7 +191,7 @@ export function registerC07Tools(server: McpServer): void {
     "c07_analyze_evidence",
     {
       title: "Analyze C07 application evidence",
-      description: `Run evidence analysis for one application (read-only). APP-101 is missing its signoff (expect missing_evidence), APP-102 has an org-name mismatch (expect needs_clarification), APP-103 is complete (expect review_ready). AI never approves or rejects — tools only report readiness and issues.`,
+      description: `Run evidence analysis for one application (read-only). APP-1 is missing its signoff (expect missing_evidence), APP-2 has an org-name mismatch plus missing items (expect missing_evidence), APP-3 is complete (expect review_ready). AI never approves or rejects — tools only report readiness and issues.`,
       inputSchema: IdInput,
       annotations: {
         readOnlyHint: true,

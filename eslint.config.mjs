@@ -12,6 +12,12 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Not shipped to Vercel: local agent skills + standalone MCP server build.
+    ".opencode/**",
+    ".agents/**",
+    "agent/**",
+    "mcp-server/dist/**",
+    "mcp-server/node_modules/**",
   ]),
 ]);
 

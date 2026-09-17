@@ -23,7 +23,7 @@ function canAccess(
 function serialize(db: ReturnType<typeof getDb>, appId: string) {
   const app = db
     .prepare(
-      "SELECT id, applicant_name, programme, submitted_at, contact, summary FROM applications WHERE id = ?",
+      "SELECT id, applicant_name, programme, submitted_at, contact, summary, theme, country, purpose, target_group FROM applications WHERE id = ?",
     )
     .get(appId);
   if (!app) return null;

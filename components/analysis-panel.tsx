@@ -38,11 +38,11 @@ export function AnalysisPanel({
       <CardHeader>
         <div className="flex flex-wrap items-center gap-2">
           <CardTitle className="flex items-center gap-2">
-            <Bot aria-hidden /> AI analysis
+            <Bot aria-hidden /> Evidence review
           </CardTitle>
           {analysis ? (
             <Badge variant="outline">
-              {analysis.source === "llm" ? "LLM plus rules" : "Rules fallback"}
+              {analysis.source === "llm" ? "AI-assisted review" : "Fallback review mode"}
             </Badge>
           ) : null}
           <Button
@@ -58,14 +58,15 @@ export function AnalysisPanel({
             ) : (
               <>
                 <Sparkles data-icon="inline-start" aria-hidden />
-                {analysis ? "Re-analyze" : "Run AI Analysis"}
+                {analysis ? "Re-analyze" : "Run evidence review"}
               </>
             )}
           </Button>
         </div>
         <CardDescription>
           AI identifies missing evidence and inconsistencies. It never approves
-          or rejects. The final decision belongs to a human reviewer.
+          or rejects. The final programme decision belongs to a human
+          caseworker — not yet made until they assess the ready file.
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
@@ -77,7 +78,7 @@ export function AnalysisPanel({
         ) : null}
         {!analysis && !analyzing && status === "analysis_required" ? (
           <p className="rounded-lg bg-muted p-4 text-sm text-muted-foreground">
-            No analysis yet. Run AI analysis to check the 3 required evidence
+            No analysis yet. Run evidence review to check the 3 required evidence
             items and compare names across documents.
           </p>
         ) : null}
@@ -101,13 +102,20 @@ export function AnalysisPanel({
               )}
               <AlertTitle>
                 {analysis.status === "review_ready"
-                  ? "Ready for human review"
+                  ? "Ready for programme review"
                   : analysis.status === "missing_evidence"
                     ? "Missing evidence"
                     : "Needs clarification"}
               </AlertTitle>
               <AlertDescription>{analysis.summary}</AlertDescription>
             </Alert>
+            {analysis.status === "review_ready" ? (
+              <p className="rounded-lg border border-dashed p-3 text-xs leading-relaxed text-muted-foreground">
+                Evidence review complete. Human programme decision: not yet
+                made. A caseworker now continues the human assessment — this
+                state is not funding approval.
+              </p>
+            ) : null}
             {analysis.issues.length === 0 ? (
               <p className="flex items-center gap-2 text-sm font-medium text-emerald-700">
                 <CheckCircle2 className="size-4" aria-hidden /> No issues found.

@@ -44,7 +44,8 @@ C07_BASE_URL=https://dail.ysfff.online node mcp-server/dist/index.js
 Preferred remote option: the Next.js app itself hosts the same 4 tools at
 `POST /api/mcp` (see `app/api/mcp/route.ts`), e.g.
 `https://dail.ysfff.online/api/mcp`.
-No separate process needed.
+No separate process needed — and this is the only option that works on
+Vercel (this Express server cannot deploy to Vercel).
 
 Standalone alternative (local demos):
 
@@ -60,11 +61,11 @@ PORT=3001 node mcp-server/dist/index.js --http
 npx @modelcontextprotocol/inspector node mcp-server/dist/index.js
 ```
 
-1. `c07_list_applications` → `{}` → see APP-101/102/103.
-2. `c07_get_application` → `{"id":"APP-102"}` → spot the org-name mismatch.
-3. `c07_analyze_evidence` → `{"id":"APP-102"}` → `needs_clarification` (live or deterministic).
-4. `c07_draft_applicant_request` → `{"id":"APP-102"}` → copy-paste draft.
-5. Encore: `c07_analyze_evidence` → `{"id":"APP-103"}` → `review_ready`.
+1. `c07_list_applications` → `{}` → see APP-1/2/3.
+2. `c07_get_application` → `{"id":"APP-2"}` → spot the org-name mismatch.
+3. `c07_analyze_evidence` → `{"id":"APP-2"}` → `missing_evidence` (live or deterministic).
+4. `c07_draft_applicant_request` → `{"id":"APP-2"}` → copy-paste draft.
+5. Encore: `c07_analyze_evidence` → `{"id":"APP-3"}` → `review_ready`.
 
 ## Claude Desktop config
 

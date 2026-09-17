@@ -27,7 +27,7 @@ const TOOLS = [
   },
   {
     name: "c07_get_application",
-    body: "Full record + evidence excerpts for one id, e.g. APP-102.",
+    body: "Full record + evidence excerpts for one id, e.g. APP-2.",
   },
   {
     name: "c07_analyze_evidence",
@@ -52,11 +52,11 @@ const CLAUDE_JSON = `{
   }
 }`;
 
-const EXAMPLE_SESSION = `1. c07_list_applications → {} → see APP-101 / 102 / 103
-2. c07_get_application → {"id": "APP-102"} → spot the org-name mismatch
-3. c07_analyze_evidence → {"id": "APP-102"} → needs_clarification
-4. c07_draft_applicant_request → {"id": "APP-102"} → copy the draft
-5. Finally: c07_analyze_evidence → {"id": "APP-103"} → review_ready`;
+const EXAMPLE_SESSION = `1. c07_list_applications → {} → see APP-1 / 2 / 3
+2. c07_get_application → {"id": "APP-2"} → spot the org-name mismatch
+3. c07_analyze_evidence → {"id": "APP-2"} → missing_evidence
+4. c07_draft_applicant_request → {"id": "APP-2"} → copy the draft
+5. Finally: c07_analyze_evidence → {"id": "APP-3"} → review_ready`;
 
 export default function McpSetupPage() {
   return (
@@ -202,7 +202,7 @@ export default function McpSetupPage() {
             <ArrowRight data-icon="inline-end" aria-hidden />
           </Link>
           <Link
-            href="/applications/APP-102"
+            href="/applications/APP-2"
             className={buttonVariants({ variant: "outline" })}
           >
             See an example

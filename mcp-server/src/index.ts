@@ -40,6 +40,7 @@ interface EvidenceItem {
   kind: "registration_record" | "activity_plan" | "responsible_person_signoff";
   label: string;
   status: EvidenceStatus;
+  documentId?: string;
   fileName?: string;
   submittedAt?: string;
   organisationName?: string;
@@ -54,6 +55,10 @@ interface ApplicationRecord {
   submittedAt: string;
   contact: string;
   summary: string;
+  theme?: string;
+  country?: string;
+  purpose?: string;
+  targetGroup?: string;
   evidence: EvidenceItem[];
 }
 
@@ -74,36 +79,86 @@ interface AnalysisResult {
 }
 
 // ------------------------------------------------- seeds (mirror lib/data.ts)
+// Keep in sync with lib/data.ts: APP-1 + APP-2 (+ APP-3 fixture).
+// APP-1: missing signoff. APP-2: org-name mismatch (B vs C) + missing
+// activity plan + signoff. APP-3: complete + consistent (review_ready).
 
 const SEEDS: ApplicationRecord[] = [
   {
-    id: "APP-101",
+    id: "APP-1",
     applicantName: "Learning Workshop A",
     programme: "Vocational pilot",
     submittedAt: "2026-09-02",
     contact: "coordinator@example.org",
     summary:
       "Six-week vocational pilot: workshop safety, tool handling and supervised practice sessions for 24 learners.",
+    theme: "Education / vocational training",
+    country: "Peru",
+    purpose:
+      "Provide practical vocational training for young adults in a rural community.",
+    targetGroup: "60 young adults seeking employment skills.",
     evidence: [
       {
         kind: "registration_record",
         label: "Registration record",
         status: "provided",
-        fileName: "registration-record_LWA.pdf",
+        documentId: "REG-1",
+        fileName: "REG-1_registration-record.pdf",
         submittedAt: "2026-09-02",
         organisationName: "Learning Workshop A",
         content:
-          "REGISTRATION RECORD — Learning Workshop A\nRegistered training provider no. LWA-2024-118.\nOrganisation name on record: Learning Workshop A.\nStatus: active. Valid through 2027-03-31.",
+          "REGISTRATION RECORD — Learning Workshop A (REG-1)\nRegistered training provider no. LWA-2024-118.\nOrganisation name on record: Learning Workshop A.\nStatus: active. Valid through 2027-03-31.",
       },
       {
         kind: "activity_plan",
         label: "Activity plan",
         status: "provided",
-        fileName: "activity-plan_LWA.pdf",
+        documentId: "PLAN-1",
+        fileName: "PLAN-1_activity-plan.pdf",
         submittedAt: "2026-09-02",
         organisationName: "Learning Workshop A",
         content:
-          "ACTIVITY PLAN — Learning Workshop A (Vocational pilot)\n6 weekly sessions, max 24 learners, 2 trainers.\nVenue: Unit 4, Foundry Lane. Risk assessment attached.\nPlanned start: 2026-10-06.",
+          "ACTIVITY PLAN — Learning Workshop A (PLAN-1, Vocational pilot)\n6 weekly sessions, max 24 learners, 2 trainers.\nVenue: Unit 4, Foundry Lane. Risk assessment attached.\nPlanned start: 2026-10-06.",
+      },
+      {
+        kind: "responsible_person_signoff",
+        label: "Responsible-person signoff",
+        status: "missing",
+        documentId: "CONSENT-1",
+        content: "",
+      },
+    ],
+  },
+  {
+    id: "APP-2",
+    applicantName: "Community Workshop B",
+    programme: "Trainer development",
+    submittedAt: "2026-09-05",
+    contact: "hello@example.org",
+    summary:
+      "Trainer development pathway: mentoring, observed delivery and peer review for 8 trainee trainers.",
+    theme: "Education / local capacity building",
+    country: "Vietnam",
+    purpose:
+      "Strengthen local training capacity through mentoring and peer-reviewed practice.",
+    targetGroup: "8 trainee trainers from partner organisations.",
+    evidence: [
+      {
+        kind: "registration_record",
+        label: "Registration record",
+        status: "provided",
+        documentId: "REG-2",
+        fileName: "REG-2_registration-record.pdf",
+        submittedAt: "2026-09-05",
+        organisationName: "Community Workshop C",
+        content:
+          "REGISTRATION RECORD — Community Workshop C (REG-2)\nRegistered community provider no. CWC-2023-042.\nOrganisation name on record: Community Workshop C.\nStatus: active. Valid through 2026-12-31.",
+      },
+      {
+        kind: "activity_plan",
+        label: "Activity plan",
+        status: "missing",
+        content: "",
       },
       {
         kind: "responsible_person_signoff",
@@ -114,86 +169,52 @@ const SEEDS: ApplicationRecord[] = [
     ],
   },
   {
-    id: "APP-102",
-    applicantName: "Community Workshop B",
-    programme: "Trainer development",
-    submittedAt: "2026-09-05",
-    contact: "hello@example.org",
-    summary:
-      "Trainer development pathway: mentoring, observed delivery and peer review for 8 trainee trainers.",
-    evidence: [
-      {
-        kind: "registration_record",
-        label: "Registration record",
-        status: "provided",
-        fileName: "registration-record_CWB.pdf",
-        submittedAt: "2026-09-05",
-        organisationName: "Community Workshop C",
-        content:
-          "REGISTRATION RECORD — Community Workshop C\nRegistered community provider no. CWC-2023-042.\nOrganisation name on record: Community Workshop C.\nStatus: active. Valid through 2026-12-31.",
-      },
-      {
-        kind: "activity_plan",
-        label: "Activity plan",
-        status: "provided",
-        fileName: "activity-plan_CWB.pdf",
-        submittedAt: "2026-09-05",
-        organisationName: "Community Workshop B",
-        content:
-          "ACTIVITY PLAN — Community Workshop B (Trainer development)\n8 trainee trainers, 10 weeks, observed delivery x3.\nLead mentor named. Planned start: 2026-10-13.",
-      },
-      {
-        kind: "responsible_person_signoff",
-        label: "Responsible-person signoff",
-        status: "provided",
-        fileName: "signoff_CWB.pdf",
-        submittedAt: "2026-09-05",
-        organisationName: "Community Workshop B",
-        signatory: "R. Okafor, Programme Lead",
-        content:
-          "RESPONSIBLE-PERSON SIGNOFF — Community Workshop B\nI confirm the trainer development plan is accurate and delivery capacity is in place.\nSigned: R. Okafor, Programme Lead, 2026-09-04.",
-      },
-    ],
-  },
-  {
-    id: "APP-103",
+    id: "APP-3",
     applicantName: "Northgate Skills Collective",
     programme: "Vocational pilot",
     submittedAt: "2026-09-08",
     contact: "admin@example.org",
     summary:
       "Weekend vocational taster series: three cohorts, introductory bench skills and progression advice.",
+    theme: "Education / community learning",
+    country: "Cambodia",
+    purpose:
+      "Offer accessible weekend taster courses that lead learners toward full vocational training.",
+    targetGroup: "48 learners across three weekend cohorts.",
     evidence: [
       {
         kind: "registration_record",
         label: "Registration record",
         status: "provided",
-        fileName: "registration-record_NSC.pdf",
+        documentId: "REG-3",
+        fileName: "REG-3_registration-record.pdf",
         submittedAt: "2026-09-08",
         organisationName: "Northgate Skills Collective",
         content:
-          "REGISTRATION RECORD — Northgate Skills Collective\nRegistered training provider no. NSC-2025-009.\nOrganisation name on record: Northgate Skills Collective.\nStatus: active. Valid through 2027-06-30.",
+          "REGISTRATION RECORD — Northgate Skills Collective (REG-3)\nRegistered training provider no. NSC-2025-009.\nOrganisation name on record: Northgate Skills Collective.\nStatus: active. Valid through 2027-06-30.",
       },
       {
         kind: "activity_plan",
         label: "Activity plan",
         status: "provided",
-        fileName: "activity-plan_NSC.pdf",
+        documentId: "PLAN-3",
+        fileName: "PLAN-3_activity-plan.pdf",
         submittedAt: "2026-09-08",
         organisationName: "Northgate Skills Collective",
         content:
-          "ACTIVITY PLAN — Northgate Skills Collective (Vocational pilot)\n3 weekend cohorts of 16 learners. Staffing 1:8.\nVenue booked. Planned start: 2026-10-18.",
+          "ACTIVITY PLAN — Northgate Skills Collective (PLAN-3, Vocational pilot)\n3 weekend cohorts of 16 learners. Staffing 1:8.\nVenue booked. Planned start: 2026-10-18.",
       },
       {
         kind: "responsible_person_signoff",
         label: "Responsible-person signoff",
         status: "provided",
-        fileName: "signoff_NSC.pdf",
+        documentId: "CONSENT-3",
+        fileName: "CONSENT-3_signoff.pdf",
         submittedAt: "2026-09-08",
         organisationName: "Northgate Skills Collective",
         signatory: "J. Whitfield, Responsible Person",
         content:
-          "RESPONSIBLE-PERSON SIGNOFF — Northgate Skills Collective\nI confirm the activity plan and staffing for the vocational pilot.\nSigned: J. Whitfield, Responsible Person, 2026-09-07.",
+          "RESPONSIBLE-PERSON SIGNOFF — Northgate Skills Collective (CONSENT-3)\nI confirm the activity plan and staffing for the vocational pilot.\nSigned: J. Whitfield, Responsible Person, 2026-09-07.",
       },
     ],
   },
@@ -324,7 +345,7 @@ function findApp(id: string): ApplicationRecord | undefined {
 }
 
 function unknownIdError(id: string): string {
-  return `Error: Unknown application id '${id}'. Valid ids are APP-101, APP-102, APP-103. Call c07_list_applications first to browse them.`;
+  return `Error: Unknown application id '${id}'. Valid ids are APP-1, APP-2, APP-3. Call c07_list_applications first to browse them.`;
 }
 
 // --------------------------------------------------------------- formatting
@@ -407,14 +428,14 @@ const ListInput = z
 
 const GetInput = z
   .object({
-    id: z.string().min(1).max(20).describe("Application id, e.g. 'APP-101'."),
+    id: z.string().min(1).max(20).describe("Application id, e.g. 'APP-1'."),
     response_format: responseFormatField,
   })
   .strict();
 
 const AnalyzeInput = z
   .object({
-    id: z.string().min(1).max(20).describe("Application id to analyze, e.g. 'APP-102'."),
+    id: z.string().min(1).max(20).describe("Application id to analyze, e.g. 'APP-2'."),
     response_format: responseFormatField,
   })
   .strict();
@@ -510,7 +531,7 @@ Args:
 Returns the application record including evidence status, organisation names, and document excerpts.
 
 Examples:
-  - "Show APP-102 detail" -> {id:"APP-102"}
+  - "Show APP-2 detail" -> {id:"APP-2"}
   - Don't use an applicant name here — use the APP-xxx id from c07_list_applications.
 
 Errors: unknown id suggests calling c07_list_applications.`,
@@ -558,14 +579,14 @@ server.registerTool(
     description: `Run evidence analysis for one application via the live Next.js /api/analyze route, with deterministic fallback when the app is offline (read-only).
 
 Args:
-  - id (string): e.g. 'APP-101' (missing signoff), 'APP-102' (name mismatch), 'APP-103' (review-ready)
+  - id (string): e.g. 'APP-1' (missing signoff), 'APP-2' (mismatch + missing), 'APP-3' (review-ready)
   - response_format ('markdown' | 'json', default 'markdown')
 
 Returns {status, summary, issues[], source: 'live'|'deterministic'|'live-llm'|'live-deterministic'}. status is missing_evidence | needs_clarification | review_ready. AI never approves/rejects.
 
 Examples:
-  - "Analyze APP-101" -> {id:"APP-101"} (expect missing_evidence)
-  - "Which apps are review ready?" -> analyze APP-103 (expect review_ready)
+  - "Analyze APP-1" -> {id:"APP-1"} (expect missing_evidence)
+  - "Which apps are review ready?" -> analyze APP-3 (expect review_ready)
 
 Errors: unknown id suggests c07_list_applications; live-API failure automatically falls back (source='deterministic').`,
     inputSchema: AnalyzeInput,
@@ -625,7 +646,7 @@ Args:
 Flow: analyzes the app first, then drafts. Returns {message, analysisStatus, source}. For review_ready apps the message notes readiness instead. Never approves/rejects.
 
 Examples:
-  - "Draft a request for APP-101" -> {id:"APP-101"} (asks for signoff)
+  - "Draft a request for APP-1" -> {id:"APP-1"} (asks for signoff)
   - Don't use to send email — copy the drafted text into the Review UI.
 
 Errors: unknown id suggests c07_list_applications; offline app falls back to deterministic template.`,

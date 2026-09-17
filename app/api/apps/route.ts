@@ -36,12 +36,12 @@ export async function GET() {
     session.role === "reviewer"
       ? db
           .prepare(
-            "SELECT id, applicant_name, programme, submitted_at, contact, summary FROM applications ORDER BY id",
+            "SELECT id, applicant_name, programme, submitted_at, contact, summary, theme, country, purpose, target_group FROM applications ORDER BY id",
           )
           .all()
       : db
           .prepare(
-            "SELECT id, applicant_name, programme, submitted_at, contact, summary FROM applications WHERE owner_id = ? ORDER BY id",
+            "SELECT id, applicant_name, programme, submitted_at, contact, summary, theme, country, purpose, target_group FROM applications WHERE owner_id = ? ORDER BY id",
           )
           .all(session.userId);
   const evStmt = db.prepare(

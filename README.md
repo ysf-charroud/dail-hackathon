@@ -23,8 +23,8 @@ npm run build    # must stay green — the prototype must remain pushable
 Optional env (see `.env.example`); the app runs fully without keys:
 
 ```bash
-OPENROUTER_API_KEY=        # AI drafting/interpretation (OpenRouter)
-OPENROUTER_MODEL=deepseek/deepseek-v4-pro
+DEEPSEEK_API_KEY=          # AI drafting/interpretation (DeepSeek direct)
+# DEEPSEEK_MODEL=deepseek-v4-pro
 # SQLITE_FILE=./data/c07.db   # optional override, git-ignored
 # SESSION_SECRET=change-me     # signs auth cookies (dev default is insecure)
 ```
@@ -49,7 +49,7 @@ plus missing plan/signoff, clarification required, never rejected.
 
 ## Real vs simulated
 
-Real: deterministic 3-item checker (`lib/analysis.ts`), hybrid OpenRouter LLM
+Real: deterministic 3-item checker (`lib/analysis.ts`), hybrid DeepSeek LLM
 with deterministic veto (`lib/llm.ts`), local SQLite + password auth with
 demo accounts, document viewer, editable request drafts.
 
@@ -67,7 +67,7 @@ all seed organisations/documents/people.
 
 ## Next validation test
 
-With `OPENROUTER_API_KEY` set, run one live analysis per application and
+With `DEEPSEEK_API_KEY` set, run one live analysis per application and
 confirm the LLM output stays within the structured schema (status + issues
 with source document IDs). Then walk a caseworker through APP-2 and check the
 single request reads as one precise, understandable ask.

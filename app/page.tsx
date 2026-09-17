@@ -370,7 +370,7 @@ export default function LandingPage() {
               splitType="chars"
               delay={18}
               duration={0.7}
-              className="block text-blue-700 dark:text-blue-400"
+              className="block text-primary"
             />
           </h1>
           <p className="mt-4 max-w-2xl text-base leading-relaxed text-pretty text-muted-foreground sm:text-lg">

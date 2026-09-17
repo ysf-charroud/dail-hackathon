@@ -38,6 +38,11 @@ export interface ApplicationRecord {
   summary: string;
   evidence: EvidenceItem[];
   reviewerNotes?: ReviewerNote[];
+  /** Project context (required design choice): shown next to the evidence. */
+  theme?: string;
+  country?: string;
+  purpose?: string;
+  targetGroup?: string;
 }
 
 export type IssueType = "missing_evidence" | "mismatch";
@@ -69,7 +74,7 @@ export const STATUS_LABELS: Record<ReviewStatus, string> = {
   analysis_required: "Analysis Required",
   missing_evidence: "Missing Evidence",
   needs_clarification: "Needs Clarification",
-  review_ready: "Review Ready",
+  review_ready: "Ready for programme review",
 };
 
 export const REQUIRED_EVIDENCE: { kind: EvidenceKind; label: string }[] = [

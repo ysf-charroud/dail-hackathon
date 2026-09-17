@@ -64,7 +64,7 @@ export function analyzeDeterministic(app: ApplicationRecord): AnalysisResult {
     return {
       status: "review_ready",
       summary:
-        "All 3 required evidence items are present and the organisation name is consistent. The application is ready for human review. (AI does not approve or reject — the final decision belongs to a human reviewer.)",
+        "All 3 required evidence items are present and the organisation name is consistent. The application is ready for programme review. (AI does not approve or reject — the final decision belongs to a human programme caseworker.)",
       issues,
     };
   }
@@ -74,7 +74,7 @@ export function analyzeDeterministic(app: ApplicationRecord): AnalysisResult {
   const count = issues.length;
   const summary =
     status === "missing_evidence"
-      ? `${count === 1 ? "1 issue" : `${count} issues`} found. A required evidence item is missing, so the application is not yet ready for human review.`
+      ? `${count === 1 ? "1 issue" : `${count} issues`} found. A required evidence item is missing, so the application is not yet ready for programme review.`
       : "The organisation name is inconsistent across the submitted evidence. Human clarification is required before the application can proceed.";
 
   return { status, summary, issues };
@@ -86,26 +86,27 @@ export function buildRequestTemplate(
   analysis: AnalysisResult,
 ): string {
   const lines: string[] = [
-    `Hello ${app.applicantName},`,
+    `Dear ${app.applicantName},`,
     ``,
     `Thank you for your application (${app.id}, ${app.programme}).`,
+    `To continue reviewing your ${app.programme} project, please address the following point(s):`,
     ``,
   ];
   for (const issue of analysis.issues) {
     if (issue.type === "missing_evidence") {
       const label = EVIDENCE_LABEL[issue.field] ?? issue.field;
       lines.push(
-        `• Your application is currently missing the ${label}. Please provide this evidence so the application can proceed to human review.`,
+        `• Your file is currently missing the ${label}. Please provide this document so that your application can proceed to programme review.`,
       );
     } else {
       lines.push(
-        `• The organisation name on your application ("${issue.applicationValue}") does not match your registration record ("${issue.evidenceValue}"). Please clarify the correct registered name or provide the matching registration document.`,
+        `• The organisation name on your application ("${issue.applicationValue}") differs from your registration record ("${issue.evidenceValue}"). Please confirm the correct registered name or provide the matching registration document.`,
       );
     }
   }
   lines.push(
     ``,
-    `A human reviewer will assess your application once the above is resolved. This message does not approve or reject your application.`,
+    `Once the above is complete, a programme caseworker will review your application. This message is guidance only and does not constitute a funding decision.`,
   );
   return lines.join("\n");
 }

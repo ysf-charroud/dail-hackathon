@@ -28,6 +28,11 @@ export const SEED_APPLICATIONS: ApplicationRecord[] = [
     contact: "coordinator@example.org",
     summary:
       "Six-week vocational pilot: workshop safety, tool handling and supervised practice sessions for 24 learners.",
+    theme: "Education / vocational training",
+    country: "Peru",
+    purpose:
+      "Provide practical vocational training for young adults in a rural community.",
+    targetGroup: "60 young adults seeking employment skills.",
     reviewerNotes: [
       {
         id: "NOTE-1",
@@ -75,6 +80,11 @@ export const SEED_APPLICATIONS: ApplicationRecord[] = [
     contact: "hello@example.org",
     summary:
       "Trainer development pathway: mentoring, observed delivery and peer review for 8 trainee trainers.",
+    theme: "Education / local capacity building",
+    country: "Vietnam",
+    purpose:
+      "Strengthen local training capacity through mentoring and peer-reviewed practice.",
+    targetGroup: "8 trainee trainers from partner organisations.",
     evidence: [
       {
         kind: "registration_record",
@@ -109,6 +119,11 @@ export const SEED_APPLICATIONS: ApplicationRecord[] = [
     contact: "admin@example.org",
     summary:
       "Weekend vocational taster series: three cohorts, introductory bench skills and progression advice.",
+    theme: "Education / community learning",
+    country: "Cambodia",
+    purpose:
+      "Offer accessible weekend taster courses that lead learners toward full vocational training.",
+    targetGroup: "48 learners across three weekend cohorts.",
     evidence: [
       {
         kind: "registration_record",

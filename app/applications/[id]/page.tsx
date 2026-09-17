@@ -25,6 +25,8 @@ import { StatusBadge } from "@/components/status-badge";
 import { EvidenceChecklist } from "@/components/evidence-checklist";
 import { AnalysisPanel } from "@/components/analysis-panel";
 import { RequestPanel } from "@/components/request-panel";
+import { ProjectContext } from "@/components/project-context";
+import { ReviewTrail } from "@/components/review-trail";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
@@ -39,7 +41,8 @@ import { Separator } from "@/components/ui/separator";
 export default function ApplicationDetailPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
-  const { get, updateEvidence, setAnalysis, saveRequest, reset } = useStore();
+  const { get, updateEvidence, setAnalysis, saveRequest, reset, trail } =
+    useStore();
   const app = get(params.id);
 
   const [analyzing, setAnalyzing] = useState(false);
@@ -285,6 +288,12 @@ export default function ApplicationDetailPage() {
             </CardContent>
           </Card>
 
+          <ProjectContext
+            theme={app.theme}
+            country={app.country}
+            purpose={app.purpose}
+            targetGroup={app.targetGroup}
+          />
           <EvidenceChecklist
             applicantName={app.applicantName}
             evidence={app.evidence}
@@ -314,6 +323,7 @@ export default function ApplicationDetailPage() {
               every programme decision.
             </CardContent>
           </Card>
+          <ReviewTrail events={trail[app.id] ?? []} />
         </div>
       </div>
     </div>

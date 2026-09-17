@@ -82,7 +82,7 @@ export function EvidenceChecklist({
     setPendingKind(null);
     if (file.size > MAX_FILE_BYTES) {
       setUploadError(
-        `“${file.name}” is too large (limit 500 KB). Try a smaller file or Simulate applicant reply.`,
+        `“${file.name}” is too large (limit 500 KB). Try a smaller file or run Simulated upload.`,
       );
       return;
     }
@@ -129,7 +129,7 @@ export function EvidenceChecklist({
       );
     } catch {
       setUploadError(
-        `Could not read “${file.name}”. Try another file or Simulate applicant reply.`,
+        `Could not read “${file.name}”. Try another file or run Simulated upload.`,
       );
     } finally {
       setReadingFile(false);
@@ -188,7 +188,7 @@ export function EvidenceChecklist({
         <CardTitle>Evidence checklist</CardTitle>
         <CardDescription>
           3 required items. Upload a document for a missing item, or run the
-          one simulated event — “Simulate applicant reply” — which delivers
+          one simulated event — “Simulated upload” — which delivers
           the missing evidence and resets the next action without another
           prompt. Any evidence change marks the application as Analysis
           Required until re-analyzed.
@@ -297,7 +297,7 @@ export function EvidenceChecklist({
                       onClick={() => simulateUpload(item.kind)}
                     >
                       <UploadCloud data-icon="inline-start" aria-hidden />{" "}
-                      Simulate applicant reply
+                      Simulated upload
                     </Button>
                   </>
                 )}

@@ -8,7 +8,14 @@ let db: Database.Database | null = null;
 
 function openDb(): Database.Database {
   // Static path keeps Turbopack tracing happy; SQLITE_FILE overrides it.
+  // Vercel: the filesystem is read-only except /tmp and ephemeral across
+  // invocations — demo data reseeds on cold start, which is fine for this
+  // prototype (no durable user data). Set SQLITE_FILE=/tmp/c07.db there.
   if (process.env.SQLITE_FILE) return new Database(process.env.SQLITE_FILE);
+  if (process.env.VERCEL) {
+    mkdirSync("/tmp/c07", { recursive: true });
+    return new Database("/tmp/c07/c07.db");
+  }
   const file = join(process.cwd(), "data", "c07.db");
   try {
     return new Database(file);
@@ -38,7 +45,11 @@ export function getDb(): Database.Database {
       submitted_at TEXT NOT NULL,
       contact TEXT NOT NULL DEFAULT '',
       summary TEXT NOT NULL DEFAULT '',
-      owner_id INTEGER REFERENCES users(id)
+      owner_id INTEGER REFERENCES users(id),
+      theme TEXT NOT NULL DEFAULT '',
+      country TEXT NOT NULL DEFAULT '',
+      purpose TEXT NOT NULL DEFAULT '',
+      target_group TEXT NOT NULL DEFAULT ''
     );
     CREATE TABLE IF NOT EXISTS evidence_items (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -106,7 +117,7 @@ function seed(db: Database.Database) {
     "APP-3": null,
   };
   const insertApp = db.prepare(
-    "INSERT INTO applications (id, applicant_name, programme, submitted_at, contact, summary, owner_id) VALUES (?, ?, ?, ?, ?, ?, ?)",
+    "INSERT INTO applications (id, applicant_name, programme, submitted_at, contact, summary, owner_id, theme, country, purpose, target_group) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
   );
   const insertEv = db.prepare(
     "INSERT INTO evidence_items (application_id, kind, label, status, document_id, file_name, submitted_at, organisation_name, signatory, content) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
@@ -120,6 +131,10 @@ function seed(db: Database.Database) {
       app.contact,
       app.summary,
       owners[app.id] ?? null,
+      app.theme ?? "",
+      app.country ?? "",
+      app.purpose ?? "",
+      app.targetGroup ?? "",
     );
     for (const e of app.evidence) {
       insertEv.run(

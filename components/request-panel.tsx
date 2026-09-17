@@ -52,7 +52,7 @@ export function RequestPanel({
       <CardHeader>
         <div className="flex flex-wrap items-center gap-2">
           <CardTitle className="flex items-center gap-2">
-            <MailPlus aria-hidden /> Applicant request
+            <MailPlus aria-hidden /> Clarification request
           </CardTitle>
           <Badge variant="default">One consolidated message</Badge>
           {source ? (
@@ -79,16 +79,16 @@ export function RequestPanel({
         <CardDescription>
           {hasAnalysis
             ? "One precise request covering every issue. Edit freely. Copy is a simulated send — nothing is emailed in this prototype."
-            : "Run AI analysis first. The request is built from the detected issues."}
+            : "Run evidence review first. The request is built from the detected issues."}
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-2.5">
         <Textarea
-          aria-label="Applicant request message"
+          aria-label="Clarification request message"
           placeholder={
             hasAnalysis
               ? "Select Generate request to draft the message."
-              : "Run AI analysis first."
+              : "Run evidence review first."
           }
           value={shown}
           rows={9}

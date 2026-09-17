@@ -27,6 +27,33 @@ export interface AppState extends ApplicationRecord {
 }
 
 const KEY = "c07-apps-v2";
+const TRAIL_KEY = "c07-trail-v1";
+
+export interface TrailEvent {
+  at: string;
+  label: string;
+  detail?: string;
+}
+
+function loadTrail(): Record<string, TrailEvent[]> {
+  if (typeof window === "undefined") return {};
+  try {
+    return JSON.parse(localStorage.getItem(TRAIL_KEY) ?? "{}") as Record<
+      string,
+      TrailEvent[]
+    >;
+  } catch {
+    return {};
+  }
+}
+
+function receivedEvent(seed: ApplicationRecord): TrailEvent {
+  return {
+    at: new Date(seed.submittedAt).toISOString(),
+    label: "Application received",
+    detail: `${seed.applicantName}, ${seed.programme}`,
+  };
+}
 
 interface Persisted {
   evidence: EvidenceItem[];
@@ -50,6 +77,7 @@ const Ctx = createContext<{
   apps: AppState[];
   remote: boolean;
   role: "reviewer" | "applicant" | null;
+  trail: Record<string, TrailEvent[]>;
   get: (id: string) => AppState | undefined;
   updateEvidence: (id: string, evidence: EvidenceItem[]) => void;
   setAnalysis: (id: string, analysis: StoredAnalysis) => void;
@@ -94,6 +122,10 @@ interface ApiApp {
   submitted_at: string;
   contact: string;
   summary: string;
+  theme: string | null;
+  country: string | null;
+  purpose: string | null;
+  target_group: string | null;
   evidence: ApiEvidence[];
   latestAnalysis: {
     status: StoredAnalysis["status"];
@@ -137,6 +169,10 @@ function toApp(a: ApiApp): AppState {
     submittedAt: a.submitted_at,
     contact: a.contact,
     summary: a.summary,
+    theme: a.theme ?? undefined,
+    country: a.country ?? undefined,
+    purpose: a.purpose ?? undefined,
+    targetGroup: a.target_group ?? undefined,
     evidence,
     reviewerNotes: SEED_APPLICATIONS.find((s) => s.id === a.id)?.reviewerNotes,
     lastAnalysis,
@@ -173,7 +209,21 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [apps, setApps] = useState<AppState[]>(() => merge());
   const [remote, setRemote] = useState(false);
   const [role, setRole] = useState<"reviewer" | "applicant" | null>(null);
+  const [trail, setTrail] = useState<Record<string, TrailEvent[]>>(() => {
+    const loaded = loadTrail();
+    const next = { ...loaded };
+    for (const seed of SEED_APPLICATIONS) {
+      if (!next[seed.id] || next[seed.id].length === 0) {
+        next[seed.id] = [receivedEvent(seed)];
+      }
+    }
+    return next;
+  });
   const remoteRef = useRef(false);
+
+  const appendTrail = useCallback((id: string, event: TrailEvent) => {
+    setTrail((prev) => ({ ...prev, [id]: [...(prev[id] ?? []), event] }));
+  }, []);
 
   // Signed-in sessions use the local SQLite database; otherwise the seeded
   // localStorage demo store is used (e.g. preview deployments).
@@ -222,6 +272,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     }
   }, [apps]);
 
+  // Review activity journal (local session record, both modes).
+  useEffect(() => {
+    try {
+      localStorage.setItem(TRAIL_KEY, JSON.stringify(trail));
+    } catch {
+      /* storage full/blocked — demo continues in memory */
+    }
+  }, [trail]);
+
   const updateEvidence = useCallback(
     (id: string, evidence: EvidenceItem[]) => {
       setApps((prev) =>
@@ -237,6 +296,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             : a,
         ),
       );
+      appendTrail(id, {
+        at: new Date().toISOString(),
+        label: "Evidence updated",
+        detail: "Re-analysis required before programme review.",
+      });
       if (!remoteRef.current) return;
       void silently(
         fetch(`/api/apps/${id}`, {
@@ -246,7 +310,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         }),
       );
     },
-    [],
+    [appendTrail],
   );
 
   const setAnalysis = useCallback((id: string, analysis: StoredAnalysis) => {
@@ -262,6 +326,17 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           : a,
       ),
     );
+    appendTrail(id, {
+      at: new Date().toISOString(),
+      label:
+        analysis.status === "review_ready"
+          ? "Marked ready for programme review"
+          : "Evidence review run",
+      detail:
+        analysis.status === "review_ready"
+          ? "Evidence complete and consistent. Human programme decision: not yet made."
+          : `${analysis.issues.length} issue(s) identified (${analysis.source === "llm" ? "AI-assisted review" : "fallback review mode"}).`,
+    });
     if (!remoteRef.current) return;
     void silently(
       fetch(`/api/apps/${id}/analysis`, {
@@ -270,10 +345,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         body: JSON.stringify(analysis),
       }),
     );
-  }, []);
+  }, [appendTrail]);
 
   const saveRequest = useCallback(
     (id: string, message: string, source: "llm" | "deterministic") => {
+      appendTrail(id, {
+        at: new Date().toISOString(),
+        label: "Applicant request prepared",
+        detail: "Simulated send — no message was actually sent.",
+      });
       if (!remoteRef.current) return;
       void silently(
         fetch(`/api/apps/${id}/request`, {
@@ -283,7 +363,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         }),
       );
     },
-    [],
+    [appendTrail],
   );
 
   const reset = useCallback(
@@ -303,6 +383,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             : a,
         ),
       );
+      setTrail((prev) => ({ ...prev, [id]: [receivedEvent(seed)] }));
       if (remoteRef.current) updateEvidence(id, seed.evidence);
     },
     [updateEvidence],
@@ -318,13 +399,24 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       apps,
       remote,
       role,
+      trail,
       get,
       updateEvidence,
       setAnalysis,
       saveRequest,
       reset,
     }),
-    [apps, remote, role, get, updateEvidence, setAnalysis, saveRequest, reset],
+    [
+      apps,
+      remote,
+      role,
+      trail,
+      get,
+      updateEvidence,
+      setAnalysis,
+      saveRequest,
+      reset,
+    ],
   );
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

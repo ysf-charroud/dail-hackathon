@@ -12,6 +12,8 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 DaiL Octopus day hackathon project (Challenge C07). The deliverable is a **working prototype link demoable in under 3 minutes**: list → open flagged app → run AI analysis → generate applicant request → simulate fix → re-analyze → Review Ready. Harness context: https://dail-octopus-review.vercel.app/onboarding-assets/harness-onboarding.pdf
 
+Assigned exercise client (unendorsed, no commission implied): Schmitz-Stiftungen — foundation programme caseworkers + applicants. Fit = institutional trust-blue theme, formal guidance tone in applicant requests, mismatch as clarification question, visible human approval.
+
 - Keep `npm run build` green at all times — the prototype must stay pushable/previewable. No test suite exists; verify with `npm run lint` + `npm run build`.
 - Work in small focused changes; save room for final demo fixes.
 - Never paste secrets into chat or commit them. AI keys are optional (see below).
@@ -39,7 +41,7 @@ Next.js 16.3.5 (App Router, Turbopack) · React 19 · TypeScript · Tailwind v4 
 
 - **AI never approves/rejects.** `review_ready` = evidence complete + consistent only. Deterministic analysis vetoes an LLM `review_ready` when checks fail (`lib/llm.ts`).
 - Statuses (exact): `analysis_required`, `missing_evidence`, `needs_clarification`, `review_ready`. Completion = provided/3 (33/67/100%); mismatches don't lower it.
-- App works with **no API key** (deterministic fallback). Env contract is `.env.example` (`OPENROUTER_API_KEY`, `OPENROUTER_MODEL`, `OPENROUTER_BASE_URL`); never hard-code providers or secrets.
+- App works with **no API key** (deterministic fallback). Env contract is `.env.example` (`DEEPSEEK_API_KEY`, `DEEPSEEK_MODEL`, `DEEPSEEK_BASE_URL`, OpenRouter legacy fallback); never hard-code providers or secrets.
 - UI: semantic theme tokens (`bg-card`, `text-muted-foreground`), never raw slate palettes — except red/amber/green **status** surfaces (preset has no tokens for those). Button icons need `data-icon="inline-start|end"`; pending buttons use `Spinner`; dialogs require `DialogTitle`; callouts use `Alert`.
 - Label synthetic data in UI (`Synthetic Data` badge); all seed content must stay fictional.
 - Root layout typing `LayoutProps<"/">` is Next 16 typed-routes API — leave it alone.
