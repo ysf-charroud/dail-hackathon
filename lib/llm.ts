@@ -6,7 +6,8 @@ import { analyzeDeterministic } from "./analysis";
 
 const BASE_URL =
   process.env.OPENROUTER_BASE_URL?.trim() || "https://openrouter.ai/api/v1";
-const MODEL = process.env.OPENROUTER_MODEL?.trim() || "openai/gpt-4o-mini";
+// Team decision (2026-09-17): DeepSeek V4 via OpenRouter. Overridable via env.
+const MODEL = process.env.OPENROUTER_MODEL?.trim() || "deepseek/deepseek-v4";
 
 function apiKey(): string | null {
   const k = process.env.OPENROUTER_API_KEY?.trim();
