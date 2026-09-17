@@ -25,11 +25,19 @@ Optional env (see `.env.example`); the app runs fully without keys:
 ```bash
 OPENROUTER_API_KEY=        # AI drafting/interpretation (OpenRouter)
 OPENROUTER_MODEL=deepseek/deepseek-v4-pro
-NEXT_PUBLIC_SUPABASE_URL=  # database + auth
-NEXT_PUBLIC_SUPABASE_ANON_KEY=
+# SQLITE_FILE=./data/c07.db   # optional override, git-ignored
+# SESSION_SECRET=change-me     # signs auth cookies (dev default is insecure)
 ```
 
-Database schema + seeds: `supabase/migrations/` (applied in order).
+Local SQLite database + password auth — no external services needed:
+
+```bash
+# demo accounts (seeded automatically on first run)
+reviewer@demo.local / Reviewer123!    # sees all applications
+applicant@demo.local / Applicant123!  # owns APP-1 + APP-2
+```
+
+Schema + seeds live in `lib/db.ts` (auto-created at `./data/c07.db`).
 
 ## 3-minute demo
 
@@ -42,8 +50,8 @@ plus missing plan/signoff, clarification required, never rejected.
 ## Real vs simulated
 
 Real: deterministic 3-item checker (`lib/analysis.ts`), hybrid OpenRouter LLM
-with deterministic veto (`lib/llm.ts`), Supabase Postgres + email-OTP auth
-when configured, document viewer, editable request drafts.
+with deterministic veto (`lib/llm.ts`), local SQLite + password auth with
+demo accounts, document viewer, editable request drafts.
 
 Simulated (labelled in UI): **Simulate applicant reply** button, corrected
 registration names, applicant-request Copy (simulated send — nothing emailed),
@@ -52,8 +60,9 @@ all seed organisations/documents/people.
 ## Limitations
 
 - Binary uploads record metadata only; readable text (≤500 KB) is extracted.
-- Signed-out use runs on local seeds; shared truth needs sign-in + Supabase.
-- Reviewer/applicant accounts are provisioned manually (sign up, then promote).
+- Preview deployments without a writable disk fall back to local demo data.
+- New accounts start as applicants; promote reviewers by updating the DB
+  (`users.role`) directly.
 - No real applicant contact — requests never leave the browser.
 
 ## Next validation test

@@ -18,7 +18,6 @@ import type {
   StoredAnalysis,
 } from "./types";
 import { SEED_APPLICATIONS } from "./data";
-import { createClient, supabaseConfigured } from "./supabase/client";
 
 export interface AppState extends ApplicationRecord {
   /** Effective reviewer-facing status (analysis_required until analyzed). */
@@ -76,13 +75,98 @@ function merge(): AppState[] {
   });
 }
 
-interface DbAnalysis {
-  application_id: string;
-  status: StoredAnalysis["status"];
+interface ApiEvidence {
+  kind: EvidenceItem["kind"];
+  label: string;
+  status: "provided" | "missing";
+  document_id: string | null;
+  file_name: string | null;
+  submitted_at: string | null;
+  organisation_name: string | null;
+  signatory: string | null;
+  content: string;
+}
+
+interface ApiApp {
+  id: string;
+  applicant_name: string;
+  programme: string;
+  submitted_at: string;
+  contact: string;
   summary: string;
-  issues: AnalysisIssue[];
-  source: "llm" | "deterministic";
-  analyzed_at: string;
+  evidence: ApiEvidence[];
+  latestAnalysis: {
+    status: StoredAnalysis["status"];
+    summary: string;
+    issues: AnalysisIssue[];
+    source: "llm" | "deterministic";
+    analyzedAt: string;
+  } | null;
+}
+
+function toEvidence(e: ApiEvidence): EvidenceItem {
+  return {
+    kind: e.kind,
+    label: e.label,
+    status: e.status,
+    documentId: e.document_id ?? undefined,
+    fileName: e.file_name ?? undefined,
+    submittedAt: e.submitted_at ?? undefined,
+    organisationName: e.organisation_name ?? undefined,
+    signatory: e.signatory ?? undefined,
+    content: e.content,
+  };
+}
+
+function toApp(a: ApiApp): AppState {
+  const evidence = a.evidence.map(toEvidence);
+  const lastAnalysis = a.latestAnalysis
+    ? {
+        status: a.latestAnalysis.status,
+        summary: a.latestAnalysis.summary,
+        issues: a.latestAnalysis.issues ?? [],
+        source: a.latestAnalysis.source,
+        analyzedAt: a.latestAnalysis.analyzedAt,
+      }
+    : null;
+  const dirty = lastAnalysis === null;
+  return {
+    id: a.id,
+    applicantName: a.applicant_name,
+    programme: a.programme,
+    submittedAt: a.submitted_at,
+    contact: a.contact,
+    summary: a.summary,
+    evidence,
+    reviewerNotes: SEED_APPLICATIONS.find((s) => s.id === a.id)?.reviewerNotes,
+    lastAnalysis,
+    dirty,
+    status: dirty
+      ? ("analysis_required" as const)
+      : (lastAnalysis?.status ?? "analysis_required"),
+  };
+}
+
+function toApiEvidence(e: EvidenceItem) {
+  return {
+    kind: e.kind,
+    label: e.label,
+    status: e.status,
+    document_id: e.documentId ?? null,
+    file_name: e.fileName ?? null,
+    submitted_at: e.submittedAt ?? null,
+    organisation_name: e.organisationName ?? null,
+    signatory: e.signatory ?? null,
+    content: e.content ?? "",
+  };
+}
+
+async function silently(promise: Promise<unknown>) {
+  try {
+    await promise;
+  } catch {
+    /* database unreachable — local state remains the demo truth */
+  }
 }
 
 export function StoreProvider({ children }: { children: ReactNode }) {
@@ -91,101 +175,30 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [role, setRole] = useState<"reviewer" | "applicant" | null>(null);
   const remoteRef = useRef(false);
 
-  // When signed in (and Supabase configured), the database is the source of
-  // truth. Otherwise the seeded localStorage demo store is used.
+  // Signed-in sessions use the local SQLite database; otherwise the seeded
+  // localStorage demo store is used (e.g. preview deployments).
   useEffect(() => {
-    if (!supabaseConfigured()) return;
     let cancelled = false;
     (async () => {
-      const supabase = createClient();
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (!session || cancelled) return;
-
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("role")
-        .eq("id", session.user.id)
-        .single();
-      const { data: dbApps } = await supabase
-        .from("applications")
-        .select(
-          "id, applicant_name, programme, submitted_at, contact, summary, evidence_items(*)",
-        )
-        .order("id");
-      const { data: dbAnalyses } = await supabase
-        .from("analyses")
-        .select("application_id, status, summary, issues, source, analyzed_at")
-        .order("analyzed_at", { ascending: false });
-      if (cancelled || !dbApps) return;
-
-      const latest = new Map<string, DbAnalysis>();
-      for (const a of (dbAnalyses ?? []) as DbAnalysis[]) {
-        if (!latest.has(a.application_id)) latest.set(a.application_id, a);
-      }
-      const mapped: AppState[] = dbApps.map((row) => {
-        const evidence: EvidenceItem[] = (row.evidence_items ?? []).map(
-          (e: {
-            kind: EvidenceItem["kind"];
-            label: string;
-            status: "provided" | "missing";
-            document_id: string | null;
-            file_name: string | null;
-            submitted_at: string | null;
-            organisation_name: string | null;
-            signatory: string | null;
-            content: string;
-            updated_at: string;
-          }) => ({
-            kind: e.kind,
-            label: e.label,
-            status: e.status,
-            documentId: e.document_id ?? undefined,
-            fileName: e.file_name ?? undefined,
-            submittedAt: e.submitted_at ?? undefined,
-            organisationName: e.organisation_name ?? undefined,
-            signatory: e.signatory ?? undefined,
-            content: e.content,
-          }),
-        );
-        const la = latest.get(row.id);
-        const lastAnalysis: StoredAnalysis | null = la
-          ? {
-              status: la.status,
-              summary: la.summary,
-              issues: la.issues ?? [],
-              source: la.source,
-              analyzedAt: la.analyzed_at,
-            }
-          : null;
-        const dirty =
-          !lastAnalysis ||
-          (row.evidence_items ?? []).some(
-            (e: { updated_at: string }) =>
-              lastAnalysis && e.updated_at > lastAnalysis.analyzedAt,
-          );
-        return {
-          id: row.id,
-          applicantName: row.applicant_name,
-          programme: row.programme,
-          submittedAt: row.submitted_at,
-          contact: row.contact,
-          summary: row.summary,
-          evidence,
-          reviewerNotes: SEED_APPLICATIONS.find((s) => s.id === row.id)
-            ?.reviewerNotes,
-          lastAnalysis: dirty ? null : lastAnalysis,
-          dirty,
-          status: dirty
-            ? ("analysis_required" as const)
-            : (lastAnalysis?.status ?? "analysis_required"),
+      try {
+        const me = await fetch("/api/auth/me");
+        if (!me.ok) return;
+        const { user } = (await me.json()) as {
+          user: { role: "reviewer" | "applicant" };
         };
-      });
-      remoteRef.current = true;
-      setRemote(true);
-      setRole(profile?.role === "reviewer" ? "reviewer" : "applicant");
-      setApps(mapped);
+        const res = await fetch("/api/apps");
+        if (!res.ok) return;
+        const { applications } = (await res.json()) as {
+          applications: ApiApp[];
+        };
+        if (cancelled) return;
+        remoteRef.current = true;
+        setRemote(true);
+        setRole(user.role);
+        setApps(applications.map(toApp));
+      } catch {
+        /* fall back to local demo store */
+      }
     })();
     return () => {
       cancelled = true;
@@ -224,29 +237,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             : a,
         ),
       );
-      if (!remoteRef.current || !supabaseConfigured()) return;
-      void (async () => {
-        const supabase = createClient();
-        for (const e of evidence) {
-          await supabase.from("evidence_items").upsert(
-            {
-              application_id: id,
-              kind: e.kind,
-              label: e.label,
-              status: e.status,
-              document_id: e.documentId ?? null,
-              file_name: e.fileName ?? null,
-              submitted_at: e.submittedAt ?? null,
-              organisation_name: e.organisationName ?? null,
-              signatory: e.signatory ?? null,
-              content: e.content ?? "",
-              updated_at: new Date().toISOString(),
-            },
-            { onConflict: "application_id,kind" },
-          );
-        }
-        await supabase.from("analyses").delete().eq("application_id", id);
-      })();
+      if (!remoteRef.current) return;
+      void silently(
+        fetch(`/api/apps/${id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ evidence: evidence.map(toApiEvidence) }),
+        }),
+      );
     },
     [],
   );
@@ -264,62 +262,51 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           : a,
       ),
     );
-    if (!remoteRef.current || !supabaseConfigured()) return;
-    void (async () => {
-      const supabase = createClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      await supabase.from("analyses").insert({
-        application_id: id,
-        status: analysis.status,
-        summary: analysis.summary,
-        issues: analysis.issues,
-        source: analysis.source,
-        analyzed_at: analysis.analyzedAt,
-        created_by: user?.id ?? null,
-      });
-    })();
+    if (!remoteRef.current) return;
+    void silently(
+      fetch(`/api/apps/${id}/analysis`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(analysis),
+      }),
+    );
   }, []);
 
   const saveRequest = useCallback(
     (id: string, message: string, source: "llm" | "deterministic") => {
-      if (!remoteRef.current || !supabaseConfigured()) return;
-      void (async () => {
-        const supabase = createClient();
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-        await supabase.from("applicant_requests").insert({
-          application_id: id,
-          message,
-          source,
-          created_by: user?.id ?? null,
-        });
-      })();
+      if (!remoteRef.current) return;
+      void silently(
+        fetch(`/api/apps/${id}/request`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message, source }),
+        }),
+      );
     },
     [],
   );
 
-  const reset = useCallback((id: string) => {
-    setApps((prev) =>
-      prev.map((a) => {
-        if (a.id !== id) return a;
-        const seed = SEED_APPLICATIONS.find((s) => s.id === id);
-        if (!seed) return a;
-        return {
-          ...seed,
-          evidence: seed.evidence,
-          lastAnalysis: null,
-          dirty: true,
-          status: "analysis_required" as const,
-        };
-      }),
-    );
-    if (!remoteRef.current || !supabaseConfigured()) return;
-    const seed = SEED_APPLICATIONS.find((s) => s.id === id);
-    if (seed) updateEvidence(id, seed.evidence);
-  }, [updateEvidence]);
+  const reset = useCallback(
+    (id: string) => {
+      const seed = SEED_APPLICATIONS.find((s) => s.id === id);
+      if (!seed) return;
+      setApps((prev) =>
+        prev.map((a) =>
+          a.id === id
+            ? {
+                ...seed,
+                evidence: seed.evidence,
+                lastAnalysis: null,
+                dirty: true,
+                status: "analysis_required" as const,
+              }
+            : a,
+        ),
+      );
+      if (remoteRef.current) updateEvidence(id, seed.evidence);
+    },
+    [updateEvidence],
+  );
 
   const get = useCallback(
     (id: string) => apps.find((a) => a.id === id),
