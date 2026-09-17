@@ -35,6 +35,7 @@ export function analyzeDeterministic(app: ApplicationRecord): AnalysisResult {
         severity: "blocking",
         message: `The ${label} has not been provided. ${why}`,
         requiresHumanClarification: false,
+        sourceDocumentId: item.documentId,
       });
     }
   }
@@ -55,6 +56,7 @@ export function analyzeDeterministic(app: ApplicationRecord): AnalysisResult {
       message:
         "The organisation name in the registration record does not match the applicant name on the application. Human clarification is required — this may be a typo, a renamed organisation, or a wrong document.",
       requiresHumanClarification: true,
+      sourceDocumentId: registration.documentId,
     });
   }
 

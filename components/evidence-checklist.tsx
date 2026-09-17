@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   AlertTriangle,
   CheckCircle2,
   Eye,
   FileText,
+  Upload,
   UploadCloud,
   XCircle,
 } from "lucide-react";
@@ -47,6 +48,10 @@ function mockSignoffUpload(applicantName: string): EvidenceItem {
   };
 }
 
+const MAX_FILE_BYTES = 500_000;
+const MAX_CONTENT_CHARS = 8000;
+const TEXT_EXTENSIONS = ["txt", "md", "markdown", "csv", "json", "log", "text"];
+
 export function EvidenceChecklist({
   applicantName,
   evidence,
@@ -59,6 +64,78 @@ export function EvidenceChecklist({
   const [viewing, setViewing] = useState<EvidenceItem | null>(null);
   const [fixingMismatch, setFixingMismatch] = useState(false);
   const [fixedName, setFixedName] = useState("");
+  const [pendingKind, setPendingKind] =
+    useState<EvidenceItem["kind"] | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [readingFile, setReadingFile] = useState(false);
+  const fileInput = useRef<HTMLInputElement>(null);
+
+  const startUpload = (kind: EvidenceItem["kind"]) => {
+    setUploadError(null);
+    setPendingKind(kind);
+    fileInput.current?.click();
+  };
+
+  const handleFile = async (file: File | undefined) => {
+    if (!file || !pendingKind) return;
+    const kind = pendingKind;
+    setPendingKind(null);
+    if (file.size > MAX_FILE_BYTES) {
+      setUploadError(
+        `“${file.name}” is too large (limit 500 KB). Try a smaller file or Simulate applicant reply.`,
+      );
+      return;
+    }
+    setReadingFile(true);
+    setUploadError(null);
+    try {
+      const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
+      const readable =
+        file.type.startsWith("text/") ||
+        TEXT_EXTENSIONS.includes(ext) ||
+        file.type === "application/json";
+      const today = new Date().toISOString().slice(0, 10);
+      const label =
+        evidence.find((e) => e.kind === kind)?.label ?? "Evidence";
+      let content: string;
+      if (readable) {
+        const text = (await file.text()).slice(0, MAX_CONTENT_CHARS);
+        content =
+          `${label} — uploaded file "${file.name}"\n` +
+          `Submitted during review on ${today}.\n\n${text}`;
+      } else {
+        content =
+          `${label} — uploaded file "${file.name}" (${file.type || "unknown type"}, ${Math.round(file.size / 1024)} KB)\n` +
+          `Submitted during review on ${today}.\n` +
+          `Binary content is not parsed; the organisation name below was recorded at upload and the reviewer should verify the file visually.`;
+      }
+      onChange(
+        evidence.map((e) =>
+          e.kind === kind
+            ? {
+                ...e,
+                status: "provided" as const,
+                fileName: file.name,
+                submittedAt: today,
+                organisationName: applicantName,
+                signatory:
+                  kind === "responsible_person_signoff"
+                    ? "Uploaded document — reviewer to verify signatory"
+                    : e.signatory,
+                content,
+              }
+            : e,
+        ),
+      );
+    } catch {
+      setUploadError(
+        `Could not read “${file.name}”. Try another file or Simulate applicant reply.`,
+      );
+    } finally {
+      setReadingFile(false);
+      if (fileInput.current) fileInput.current.value = "";
+    }
+  };
 
   const simulateUpload = (kind: EvidenceItem["kind"]) => {
     if (kind === "responsible_person_signoff") {
@@ -110,10 +187,26 @@ export function EvidenceChecklist({
       <CardHeader>
         <CardTitle>Evidence checklist</CardTitle>
         <CardDescription>
-          3 required items. Updating evidence marks the application as Analysis
+          3 required items. Upload a document for a missing item, or run the
+          one simulated event — “Simulate applicant reply” — which delivers
+          the missing evidence and resets the next action without another
+          prompt. Any evidence change marks the application as Analysis
           Required until re-analyzed.
         </CardDescription>
       </CardHeader>
+      <input
+        ref={fileInput}
+        type="file"
+        className="sr-only"
+        aria-label="Choose evidence document to upload"
+        accept=".pdf,.txt,.md,.markdown,.csv,.json,.log,.png,.jpg,.jpeg"
+        onChange={(e) => void handleFile(e.target.files?.[0])}
+      />
+      {uploadError ? (
+        <p role="alert" className="px-5 text-xs text-destructive">
+          {uploadError}
+        </p>
+      ) : null}
       <CardContent className="flex flex-col gap-3">
         {evidence.map((item) => {
           const complete = item.status === "provided";
@@ -146,6 +239,7 @@ export function EvidenceChecklist({
                   {complete ? (
                     <>
                       <span className="block truncate">
+                        {item.documentId ? `${item.documentId}, ` : null}
                         {item.fileName ?? "document"}
                         {item.submittedAt
                           ? `, submitted ${item.submittedAt}`
@@ -186,14 +280,26 @@ export function EvidenceChecklist({
                     <Eye data-icon="inline-start" aria-hidden /> View
                   </Button>
                 ) : (
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => simulateUpload(item.kind)}
-                  >
-                    <UploadCloud data-icon="inline-start" aria-hidden />{" "}
-                    Simulate upload
-                  </Button>
+                  <>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      disabled={readingFile}
+                      onClick={() => startUpload(item.kind)}
+                    >
+                      <Upload data-icon="inline-start" aria-hidden /> Upload
+                      document
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      disabled={readingFile}
+                      onClick={() => simulateUpload(item.kind)}
+                    >
+                      <UploadCloud data-icon="inline-start" aria-hidden />{" "}
+                      Simulate applicant reply
+                    </Button>
+                  </>
                 )}
                 {item.kind === "registration_record" && complete ? (
                   <Button
@@ -225,12 +331,17 @@ export function EvidenceChecklist({
                 {viewing ? `Document: ${viewing.label}` : "Document"}
               </DialogTitle>
               <DialogDescription>
-                Synthetic mock document supplied with the application.
+                Document supplied with the application. Reviewer-uploaded files
+                show extracted text when readable.
               </DialogDescription>
             </DialogHeader>
             {viewing ? (
               <div className="flex flex-col gap-2">
                 <dl className="grid grid-cols-2 gap-2 text-xs">
+                  <dt className="text-muted-foreground">Document ID</dt>
+                  <dd className="font-mono font-medium">
+                    {viewing.documentId ?? "Not assigned yet"}
+                  </dd>
                   <dt className="text-muted-foreground">File</dt>
                   <dd className="font-medium">{viewing.fileName ?? "—"}</dd>
                   <dt className="text-muted-foreground">Submitted</dt>

@@ -18,7 +18,7 @@ DaiL Octopus day hackathon project (Challenge C07). The deliverable is a **worki
 
 ## Stack
 
-Next.js 16.3.5 (App Router, Turbopack) · React 19 · TypeScript · Tailwind v4 · shadcn/ui (base-nova = **Base UI, not Radix**) · lucide-react. No database, no auth.
+Next.js 16.3.5 (App Router, Turbopack) · React 19 · TypeScript · Tailwind v4 · shadcn/ui (base-nova = **Base UI, not Radix**) · lucide-react · Supabase Postgres + email-password auth (optional; local-seed fallback).
 
 ## Commands
 
@@ -31,7 +31,8 @@ Next.js 16.3.5 (App Router, Turbopack) · React 19 · TypeScript · Tailwind v4 
 - `app/page.tsx` — dashboard list (client, reads store).
 - `app/applications/[id]/page.tsx` — detail view (client, `useParams`, not async `params`).
 - `app/api/analyze/route.ts`, `app/api/draft-request/route.ts` — POST handlers, `Response.json`, `export const dynamic = "force-dynamic"`.
-- `lib/` — `types.ts` (statuses, evidence model), `data.ts` (synthetic seeds), `analysis.ts` (deterministic checker), `llm.ts` (OpenRouter), `store.tsx` (localStorage `c07-apps-v1`, seeded from `data.ts`).
+- `lib/` — `types.ts` (statuses, evidence model, doc IDs), `data.ts` (seeds mirroring published `initial.json`: APP-1/APP-2 + extra APP-3 fixture), `analysis.ts` (deterministic checker), `llm.ts` (OpenRouter), `store.tsx` (Supabase-backed when signed in, else localStorage `c07-apps-v2`), `supabase/` clients.
+- `supabase/migrations/` — schema + seeds, applied via Supabase MCP (`python3 /tmp/opencode/mcp.py call apply_migration …`); verify with `execute_sql`.
 - `components/ui/*` is CLI-owned. Feature components: `status-badge`, `evidence-checklist`, `analysis-panel`, `request-panel`, `app-header`.
 
 ## Rules that matter here

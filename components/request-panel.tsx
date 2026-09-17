@@ -54,6 +54,7 @@ export function RequestPanel({
           <CardTitle className="flex items-center gap-2">
             <MailPlus aria-hidden /> Applicant request
           </CardTitle>
+          <Badge variant="default">One consolidated message</Badge>
           {source ? (
             <Badge variant="outline">
               {source === "llm" ? "AI-drafted" : "Template fallback"}
@@ -77,7 +78,7 @@ export function RequestPanel({
         </div>
         <CardDescription>
           {hasAnalysis
-            ? "Edit freely before sending. Copy to share with the applicant."
+            ? "One precise request covering every issue. Edit freely. Copy is a simulated send — nothing is emailed in this prototype."
             : "Run AI analysis first. The request is built from the detected issues."}
         </CardDescription>
       </CardHeader>

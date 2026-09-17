@@ -6,8 +6,8 @@ import { analyzeDeterministic } from "./analysis";
 
 const BASE_URL =
   process.env.OPENROUTER_BASE_URL?.trim() || "https://openrouter.ai/api/v1";
-// Team decision (2026-09-17): DeepSeek V4 via OpenRouter. Overridable via env.
-const MODEL = process.env.OPENROUTER_MODEL?.trim() || "deepseek/deepseek-v4";
+// Team decision (2026-09-17): DeepSeek V4 Pro via OpenRouter. Overridable via env.
+const MODEL = process.env.OPENROUTER_MODEL?.trim() || "deepseek/deepseek-v4-pro";
 
 function apiKey(): string | null {
   const k = process.env.OPENROUTER_API_KEY?.trim();
@@ -24,9 +24,11 @@ Fixed required evidence (exactly these 3, never invent others):
 Rules:
 - NEVER approve or reject the application. NEVER invent eligibility rules or evidence that was not provided.
 - Report missing items. Compare applicantName to registration organisationName; flag mismatches and require human clarification.
+- Respect locked reviewer notes (authoritative corrections — e.g. keep the supplied organisation spelling).
+- Cite the source document ID (REG-1, PLAN-1, …) in each issue as "sourceDocumentId" when one applies.
 - If uncertain, say human clarification is required.
 - Respond with JSON ONLY, no markdown, matching this schema:
-{"status":"missing_evidence"|"needs_clarification"|"review_ready","summary":"string","issues":[{"type":"missing_evidence"|"mismatch","field":"string","severity":"blocking"|"warning","message":"string","requiresHumanClarification":boolean,"applicationValue":"string (mismatch only)","evidenceValue":"string (mismatch only)"}]}
+{"status":"missing_evidence"|"needs_clarification"|"review_ready","summary":"string","issues":[{"type":"missing_evidence"|"mismatch","field":"string","severity":"blocking"|"warning","message":"string","requiresHumanClarification":boolean,"applicationValue":"string (mismatch only)","evidenceValue":"string (mismatch only)","sourceDocumentId":"string (when one applies)"}]}
 - status: missing_evidence if any required item missing; else needs_clarification if any mismatch; else review_ready.
 - summary: 1-2 plain sentences for the reviewer.`;
 
@@ -115,8 +117,14 @@ export async function analyzeWithLlm(
       {
         applicantName: app.applicantName,
         programme: app.programme,
+        reviewerNotes: (app.reviewerNotes ?? []).map((n) => ({
+          id: n.id,
+          text: n.text,
+          locked: n.locked,
+        })),
         evidence: app.evidence.map((e) => ({
           kind: e.kind,
+          documentId: e.documentId ?? null,
           status: e.status,
           organisationName: e.organisationName ?? null,
           signatory: e.signatory ?? null,

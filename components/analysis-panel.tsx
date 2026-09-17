@@ -145,8 +145,15 @@ export function AnalysisPanel({
                       >
                         {issue.severity === "blocking"
                           ? "Blocking"
-                          : "Requires clarification"}
+                          : "Uncertain — needs clarification"}
                       </Badge>
+                      {issue.sourceDocumentId ? (
+                        <Badge variant="secondary">
+                          Source: {issue.sourceDocumentId}
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline">No source yet</Badge>
+                      )}
                     </div>
                     <p className="mt-1.5 text-sm text-muted-foreground">
                       {issue.message}
@@ -174,7 +181,8 @@ export function AnalysisPanel({
                     {issue.requiresHumanClarification ? (
                       <p className="mt-2 flex items-center gap-1.5 text-xs text-amber-800">
                         <AlertTriangle className="size-3.5" aria-hidden />
-                        Human clarification is required.
+                        Uncertain — human clarification is required. Never
+                        auto-rejected (RULE-2).
                       </p>
                     ) : null}
                   </li>
@@ -183,6 +191,11 @@ export function AnalysisPanel({
             )}
           </>
         ) : null}
+        <p className="text-xs text-muted-foreground">
+          Rules applied: RULE-1 (registration, activity plan, named signoff),
+          RULE-2 (mismatch → clarification, never rejection), RULE-3 (a human
+          reviewer alone decides). No other rules are used.
+        </p>
       </CardContent>
     </Card>
   );

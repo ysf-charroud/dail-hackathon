@@ -13,12 +13,20 @@ export interface EvidenceItem {
   kind: EvidenceKind;
   label: string;
   status: "provided" | "missing";
+  /** Published source-document ID (REG-1, PLAN-1, …). Missing docs may have none yet. */
+  documentId?: string;
   fileName?: string;
   submittedAt?: string;
   organisationName?: string;
   signatory?: string;
   /** Short realistic mock document body shown in the viewer + sent to the AI. */
   content?: string;
+}
+
+export interface ReviewerNote {
+  id: string;
+  text: string;
+  locked: boolean;
 }
 
 export interface ApplicationRecord {
@@ -29,6 +37,7 @@ export interface ApplicationRecord {
   contact: string;
   summary: string;
   evidence: EvidenceItem[];
+  reviewerNotes?: ReviewerNote[];
 }
 
 export type IssueType = "missing_evidence" | "mismatch";
@@ -41,6 +50,8 @@ export interface AnalysisIssue {
   requiresHumanClarification: boolean;
   applicationValue?: string;
   evidenceValue?: string;
+  /** Source document this issue links to (REG-1, PLAN-1, …), if any. */
+  sourceDocumentId?: string;
 }
 
 export interface AnalysisResult {

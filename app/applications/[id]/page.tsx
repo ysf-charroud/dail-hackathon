@@ -9,6 +9,7 @@ import {
   CalendarDays,
   CheckCircle2,
   CircleAlert,
+  Lock,
   Mail,
   RotateCcw,
   ScrollText,
@@ -38,7 +39,7 @@ import { Separator } from "@/components/ui/separator";
 export default function ApplicationDetailPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
-  const { get, updateEvidence, setAnalysis, reset } = useStore();
+  const { get, updateEvidence, setAnalysis, saveRequest, reset } = useStore();
   const app = get(params.id);
 
   const [analyzing, setAnalyzing] = useState(false);
@@ -143,6 +144,7 @@ export default function ApplicationDetailPage() {
       };
       setRequestMessage(data.message);
       setRequestSource(data.source);
+      saveRequest(app.id, data.message, data.source);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Request generation failed");
     } finally {
@@ -266,6 +268,20 @@ export default function ApplicationDetailPage() {
               <p className="rounded-lg bg-muted p-3 text-muted-foreground">
                 {app.summary}
               </p>
+              {app.reviewerNotes?.map((note) => (
+                <p
+                  key={note.id}
+                  className="flex items-start gap-1.5 rounded-lg border border-amber-600/20 bg-amber-500/10 p-3 text-xs text-amber-900"
+                >
+                  <Lock className="mt-0.5 size-3.5 shrink-0" aria-hidden />
+                  <span>
+                    <span className="font-semibold">
+                      Locked reviewer note ({note.id}):
+                    </span>{" "}
+                    {note.text}
+                  </span>
+                </p>
+              ))}
             </CardContent>
           </Card>
 
