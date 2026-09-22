@@ -9,13 +9,14 @@ export async function GET() {
     return Response.json({ error: "Not signed in" }, { status: 401 });
   let db;
   try {
-    db = getDb();
+    db = await getDb();
   } catch {
     return dbUnavailable();
   }
-  const row = db
-    .prepare("SELECT id, email, role, display_name FROM users WHERE id = ?")
-    .get(session.userId);
+  const [row] = await db.query(
+    "SELECT id::int, email, role, display_name FROM users WHERE id = $1",
+    [session.userId],
+  );
   if (!row) return Response.json({ error: "Not signed in" }, { status: 401 });
   return Response.json({ user: row });
 }

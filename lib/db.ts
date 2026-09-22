@@ -1,155 +1,138 @@
-import Database from "better-sqlite3";
-import { mkdirSync } from "node:fs";
-import { join } from "node:path";
+import { neon, type NeonQueryFunction } from "@neondatabase/serverless";
 import { SEED_APPLICATIONS } from "./data";
 import { hashPasswordSync } from "./password";
 
-let db: Database.Database | null = null;
+export type Db = NeonQueryFunction<false, false>;
 
-function openDb(): Database.Database {
-  // Static path keeps Turbopack tracing happy; SQLITE_FILE overrides it.
-  // Vercel: the filesystem is read-only except /tmp and ephemeral across
-  // invocations — demo data reseeds on cold start, which is fine for this
-  // prototype (no durable user data). Set SQLITE_FILE=/tmp/c07.db there.
-  if (process.env.SQLITE_FILE) return new Database(process.env.SQLITE_FILE);
-  if (process.env.VERCEL) {
-    mkdirSync("/tmp/c07", { recursive: true });
-    return new Database("/tmp/c07/c07.db");
-  }
-  const file = join(process.cwd(), "data", "c07.db");
-  try {
-    return new Database(file);
-  } catch {
-    mkdirSync(join(process.cwd(), "data"), { recursive: true });
-    return new Database(file);
-  }
+let sql: Db | null = null;
+let initialization: Promise<void> | null = null;
+
+function databaseUrl(): string {
+  const value = process.env.DATABASE_URL?.trim();
+  if (!value) throw new Error("DATABASE_URL is required");
+  return value;
 }
 
-export function getDb(): Database.Database {
-  if (db) return db;
-  db = openDb();
-  db.pragma("journal_mode = WAL");
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS users (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
+export async function getDb(): Promise<Db> {
+  if (!sql) sql = neon(databaseUrl());
+  initialization ??= initialize(sql).catch((error) => {
+    initialization = null;
+    throw error;
+  });
+  await initialization;
+  return sql;
+}
+
+async function initialize(db: Db): Promise<void> {
+  await db.transaction((tx) => [
+    tx.query(`CREATE TABLE IF NOT EXISTS users (
+      id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
       email TEXT UNIQUE NOT NULL,
       password_hash TEXT NOT NULL,
-      role TEXT NOT NULL CHECK (role IN ('reviewer','applicant')),
+      role TEXT NOT NULL CHECK (role IN ('reviewer', 'applicant')),
       display_name TEXT NOT NULL DEFAULT '',
-      created_at TEXT NOT NULL DEFAULT (datetime('now'))
-    );
-    CREATE TABLE IF NOT EXISTS applications (
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    )`),
+    tx.query(`CREATE TABLE IF NOT EXISTS applications (
       id TEXT PRIMARY KEY,
       applicant_name TEXT NOT NULL,
       programme TEXT NOT NULL,
-      submitted_at TEXT NOT NULL,
+      submitted_at TIMESTAMPTZ NOT NULL,
       contact TEXT NOT NULL DEFAULT '',
       summary TEXT NOT NULL DEFAULT '',
-      owner_id INTEGER REFERENCES users(id),
+      owner_id BIGINT REFERENCES users(id),
       theme TEXT NOT NULL DEFAULT '',
       country TEXT NOT NULL DEFAULT '',
       purpose TEXT NOT NULL DEFAULT '',
       target_group TEXT NOT NULL DEFAULT ''
-    );
-    CREATE TABLE IF NOT EXISTS evidence_items (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
+    )`),
+    tx.query(`CREATE TABLE IF NOT EXISTS evidence_items (
+      id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
       application_id TEXT NOT NULL REFERENCES applications(id) ON DELETE CASCADE,
       kind TEXT NOT NULL,
       label TEXT NOT NULL,
-      status TEXT NOT NULL DEFAULT 'missing',
+      status TEXT NOT NULL DEFAULT 'missing' CHECK (status IN ('provided', 'missing')),
       document_id TEXT,
       file_name TEXT,
-      submitted_at TEXT,
+      submitted_at TIMESTAMPTZ,
       organisation_name TEXT,
       signatory TEXT,
       content TEXT NOT NULL DEFAULT '',
-      updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
       UNIQUE (application_id, kind)
-    );
-    CREATE TABLE IF NOT EXISTS analyses (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
+    )`),
+    tx.query(`CREATE TABLE IF NOT EXISTS analyses (
+      id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
       application_id TEXT NOT NULL REFERENCES applications(id) ON DELETE CASCADE,
-      status TEXT NOT NULL,
+      status TEXT NOT NULL CHECK (status IN ('missing_evidence', 'needs_clarification', 'review_ready')),
       summary TEXT NOT NULL,
-      issues TEXT NOT NULL DEFAULT '[]',
-      source TEXT NOT NULL DEFAULT 'deterministic',
-      analyzed_at TEXT NOT NULL DEFAULT (datetime('now')),
-      created_by INTEGER REFERENCES users(id)
-    );
-    CREATE TABLE IF NOT EXISTS applicant_requests (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      issues JSONB NOT NULL DEFAULT '[]'::jsonb,
+      source TEXT NOT NULL DEFAULT 'deterministic' CHECK (source IN ('llm', 'deterministic')),
+      analyzed_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      created_by BIGINT REFERENCES users(id)
+    )`),
+    tx.query(`CREATE TABLE IF NOT EXISTS applicant_requests (
+      id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
       application_id TEXT NOT NULL REFERENCES applications(id) ON DELETE CASCADE,
       message TEXT NOT NULL,
-      source TEXT NOT NULL DEFAULT 'deterministic',
-      created_by INTEGER REFERENCES users(id),
-      created_at TEXT NOT NULL DEFAULT (datetime('now'))
-    );
-  `);
-  if (
-    (db.prepare("SELECT COUNT(*) AS n FROM users").get() as { n: number }).n ===
-    0
-  ) {
-    seed(db);
-  }
-  return db;
+      source TEXT NOT NULL DEFAULT 'deterministic' CHECK (source IN ('llm', 'deterministic')),
+      created_by BIGINT REFERENCES users(id),
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    )`),
+    tx.query("CREATE INDEX IF NOT EXISTS evidence_items_application_id_idx ON evidence_items(application_id)"),
+    tx.query("CREATE INDEX IF NOT EXISTS analyses_application_time_idx ON analyses(application_id, analyzed_at DESC)"),
+    tx.query("CREATE INDEX IF NOT EXISTS applicant_requests_application_time_idx ON applicant_requests(application_id, created_at DESC)"),
+    tx.query("CREATE INDEX IF NOT EXISTS applications_owner_id_idx ON applications(owner_id)"),
+  ]);
+
+  await seed(db);
 }
 
-function seed(db: Database.Database) {
-  const insertUser = db.prepare(
-    "INSERT INTO users (email, password_hash, role, display_name) VALUES (?, ?, ?, ?)",
-  );
-  const reviewer = insertUser.run(
-    "reviewer@demo.local",
-    hashPasswordSync("Reviewer123!"),
-    "reviewer",
-    "Demo Reviewer",
-  ).lastInsertRowid as number;
-  const applicant = insertUser.run(
-    "applicant@demo.local",
-    hashPasswordSync("Applicant123!"),
-    "applicant",
-    "Demo Applicant",
-  ).lastInsertRowid as number;
+async function seed(db: Db): Promise<void> {
+  const results = await db.transaction((tx) => [
+    tx.query(
+      `INSERT INTO users (email, password_hash, role, display_name)
+       VALUES ($1, $2, 'reviewer', $3)
+       ON CONFLICT (email) DO UPDATE SET email = EXCLUDED.email
+       RETURNING id`,
+      ["reviewer@demo.local", hashPasswordSync("Reviewer123!"), "Demo Reviewer"],
+    ),
+    tx.query(
+      `INSERT INTO users (email, password_hash, role, display_name)
+       VALUES ($1, $2, 'applicant', $3)
+       ON CONFLICT (email) DO UPDATE SET email = EXCLUDED.email
+       RETURNING id`,
+      ["applicant@demo.local", hashPasswordSync("Applicant123!"), "Demo Applicant"],
+    ),
+  ]);
+  const applicantId = (results[1][0] as { id: string }).id;
 
-  const owners: Record<string, number | null> = {
-    "APP-1": applicant,
-    "APP-2": applicant,
-    "APP-3": null,
-  };
-  const insertApp = db.prepare(
-    "INSERT INTO applications (id, applicant_name, programme, submitted_at, contact, summary, owner_id, theme, country, purpose, target_group) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-  );
-  const insertEv = db.prepare(
-    "INSERT INTO evidence_items (application_id, kind, label, status, document_id, file_name, submitted_at, organisation_name, signatory, content) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-  );
   for (const app of SEED_APPLICATIONS) {
-    insertApp.run(
-      app.id,
-      app.applicantName,
-      app.programme,
-      app.submittedAt,
-      app.contact,
-      app.summary,
-      owners[app.id] ?? null,
-      app.theme ?? "",
-      app.country ?? "",
-      app.purpose ?? "",
-      app.targetGroup ?? "",
+    await db.query(
+      `INSERT INTO applications
+        (id, applicant_name, programme, submitted_at, contact, summary, owner_id, theme, country, purpose, target_group)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+       ON CONFLICT (id) DO NOTHING`,
+      [
+        app.id, app.applicantName, app.programme, app.submittedAt, app.contact,
+        app.summary, app.id === "APP-3" ? null : applicantId, app.theme ?? "",
+        app.country ?? "", app.purpose ?? "", app.targetGroup ?? "",
+      ],
     );
-    for (const e of app.evidence) {
-      insertEv.run(
-        app.id,
-        e.kind,
-        e.label,
-        e.status,
-        e.documentId ?? null,
-        e.fileName ?? null,
-        e.submittedAt ?? null,
-        e.organisationName ?? null,
-        e.signatory ?? null,
-        e.content ?? "",
-      );
-    }
+    await db.transaction((tx) =>
+      app.evidence.map((e) =>
+        tx.query(
+          `INSERT INTO evidence_items
+            (application_id, kind, label, status, document_id, file_name, submitted_at, organisation_name, signatory, content)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+           ON CONFLICT (application_id, kind) DO NOTHING`,
+          [
+            app.id, e.kind, e.label, e.status, e.documentId ?? null,
+            e.fileName ?? null, e.submittedAt ?? null, e.organisationName ?? null,
+            e.signatory ?? null, e.content ?? "",
+          ],
+        ),
+      ),
+    );
   }
-  void reviewer;
 }

@@ -29,15 +29,15 @@ export async function POST(request: Request) {
   }
   let db;
   try {
-    db = getDb();
-  } catch {
+    db = await getDb();
+  } catch (error) {
+    console.error("Database initialization failed", error);
     return dbUnavailable();
   }
-  const row = db
-    .prepare("SELECT id, password_hash, role FROM users WHERE email = ?")
-    .get(email) as
-    | { id: number; password_hash: string; role: "reviewer" | "applicant" }
-    | undefined;
+  const [row] = (await db.query(
+    "SELECT id::int, password_hash, role FROM users WHERE email = $1",
+    [email],
+  )) as { id: number; password_hash: string; role: "reviewer" | "applicant" }[];
   if (!row || !verifyPassword(password, row.password_hash)) {
     return Response.json({ error: "Invalid login credentials" }, { status: 401 });
   }

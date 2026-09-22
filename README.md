@@ -25,11 +25,11 @@ Optional env (see `.env.example`); the app runs fully without keys:
 ```bash
 DEEPSEEK_API_KEY=          # AI drafting/interpretation (DeepSeek direct)
 # DEEPSEEK_MODEL=deepseek-v4-pro
-# SQLITE_FILE=./data/c07.db   # optional override, git-ignored
+# DATABASE_URL=postgresql://... # Neon pooled connection string
 # SESSION_SECRET=change-me     # signs auth cookies (dev default is insecure)
 ```
 
-Local SQLite database + password auth — no external services needed:
+Neon Postgres + password auth:
 
 ```bash
 # demo accounts (seeded automatically on first run)
@@ -37,7 +37,7 @@ reviewer@demo.local / Reviewer123!    # sees all applications
 applicant@demo.local / Applicant123!  # owns APP-1 + APP-2
 ```
 
-Schema + seeds live in `lib/db.ts` (auto-created at `./data/c07.db`).
+Schema + fictional demo seeds live in `lib/db.ts` and initialize automatically.
 
 ## 3-minute demo
 
@@ -50,7 +50,7 @@ plus missing plan/signoff, clarification required, never rejected.
 ## Real vs simulated
 
 Real: deterministic 3-item checker (`lib/analysis.ts`), hybrid DeepSeek LLM
-with deterministic veto (`lib/llm.ts`), local SQLite + password auth with
+with deterministic veto (`lib/llm.ts`), Neon Postgres + password auth with
 demo accounts, document viewer, editable request drafts.
 
 Simulated (labelled in UI): **Simulate applicant reply** button, corrected
@@ -60,7 +60,7 @@ all seed organisations/documents/people.
 ## Limitations
 
 - Binary uploads record metadata only; readable text (≤500 KB) is extracted.
-- Preview deployments without a writable disk fall back to local demo data.
+- Signed-out sessions fall back to browser-local demo data.
 - New accounts start as applicants; promote reviewers by updating the DB
   (`users.role`) directly.
 - No real applicant contact — requests never leave the browser.

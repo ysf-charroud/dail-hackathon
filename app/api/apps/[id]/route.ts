@@ -1,66 +1,59 @@
-import { getDb } from "@/lib/db";
+import { getDb, type Db } from "@/lib/db";
 import { currentSession, dbUnavailable } from "@/lib/api-auth";
 
 export const dynamic = "force-dynamic";
 
-function canAccess(
-  db: ReturnType<typeof getDb>,
-  appId: string,
-  session: NonNullable<Awaited<ReturnType<typeof currentSession>>>,
-): boolean {
-  if (session.role === "reviewer") {
-    return Boolean(
-      db.prepare("SELECT 1 FROM applications WHERE id = ?").get(appId),
-    );
-  }
-  return Boolean(
-    db
-      .prepare("SELECT 1 FROM applications WHERE id = ? AND owner_id = ?")
-      .get(appId, session.userId),
+type Session = NonNullable<Awaited<ReturnType<typeof currentSession>>>;
+
+async function canAccess(db: Db, appId: string, session: Session) {
+  const [row] = await db.query(
+    `SELECT 1 FROM applications
+     WHERE id = $1 AND ($2::text = 'reviewer' OR owner_id = $3)`,
+    [appId, session.role, session.userId],
   );
+  return Boolean(row);
 }
 
-function serialize(db: ReturnType<typeof getDb>, appId: string) {
-  const app = db
-    .prepare(
-      "SELECT id, applicant_name, programme, submitted_at, contact, summary, theme, country, purpose, target_group FROM applications WHERE id = ?",
-    )
-    .get(appId);
+async function serialize(db: Db, appId: string) {
+  const [[app], evidence, [analysis], [request]] = await Promise.all([
+    db.query(
+      `SELECT id, applicant_name, programme, submitted_at, contact, summary,
+              theme, country, purpose, target_group
+       FROM applications WHERE id = $1`,
+      [appId],
+    ),
+    db.query(
+      `SELECT kind, label, status, document_id, file_name, submitted_at,
+              organisation_name, signatory, content, updated_at
+       FROM evidence_items WHERE application_id = $1 ORDER BY id`,
+      [appId],
+    ),
+    db.query(
+      `SELECT status, summary, issues, source, analyzed_at
+       FROM analyses WHERE application_id = $1
+       ORDER BY analyzed_at DESC, id DESC LIMIT 1`,
+      [appId],
+    ),
+    db.query(
+      `SELECT message FROM applicant_requests WHERE application_id = $1
+       ORDER BY created_at DESC, id DESC LIMIT 1`,
+      [appId],
+    ),
+  ]);
   if (!app) return null;
-  const evidence = db
-    .prepare(
-      "SELECT kind, label, status, document_id, file_name, submitted_at, organisation_name, signatory, content, updated_at FROM evidence_items WHERE application_id = ?",
-    )
-    .all(appId);
-  const la = db
-    .prepare(
-      "SELECT status, summary, issues, source, analyzed_at FROM analyses WHERE application_id = ? ORDER BY analyzed_at DESC LIMIT 1",
-    )
-    .get(appId) as
-    | {
-        status: string;
-        summary: string;
-        issues: string;
-        source: "llm" | "deterministic";
-        analyzed_at: string;
-      }
-    | undefined;
-  const req = db
-    .prepare(
-      "SELECT message FROM applicant_requests WHERE application_id = ? ORDER BY created_at DESC LIMIT 1",
-    )
-    .get(appId) as { message: string } | undefined;
   return {
-    ...(app as object),
+    ...app,
     evidence,
-    latestAnalysis: la
+    latestAnalysis: analysis
       ? {
-          ...la,
-          issues: JSON.parse(la.issues) as unknown[],
-          analyzedAt: la.analyzed_at,
+          status: analysis.status,
+          summary: analysis.summary,
+          issues: analysis.issues,
+          source: analysis.source,
+          analyzedAt: analysis.analyzed_at,
         }
       : null,
-    latestRequest: req?.message ?? null,
+    latestRequest: request?.message ?? null,
   };
 }
 
@@ -72,15 +65,14 @@ export async function GET(
   if (!session)
     return Response.json({ error: "Not signed in" }, { status: 401 });
   const { id } = await params;
-  let db;
   try {
-    db = getDb();
+    const db = await getDb();
+    if (!(await canAccess(db, id, session)))
+      return Response.json({ error: "Not found" }, { status: 404 });
+    return Response.json({ application: await serialize(db, id) });
   } catch {
     return dbUnavailable();
   }
-  if (!canAccess(db, id, session))
-    return Response.json({ error: "Not found" }, { status: 404 });
-  return Response.json({ application: serialize(db, id) });
 }
 
 export async function PUT(
@@ -97,48 +89,37 @@ export async function PUT(
   } catch {
     return Response.json({ error: "Invalid request" }, { status: 400 });
   }
-  if (!Array.isArray(body.evidence)) {
+  if (!Array.isArray(body.evidence))
     return Response.json({ error: "evidence array required" }, { status: 400 });
-  }
-  let db;
+
   try {
-    db = getDb();
+    const db = await getDb();
+    if (!(await canAccess(db, id, session)))
+      return Response.json({ error: "Not found" }, { status: 404 });
+    const items = body.evidence as Record<string, string | null | undefined>[];
+    await db.transaction((tx) => [
+      ...items.map((e) =>
+        tx.query(
+          `INSERT INTO evidence_items
+            (application_id, kind, label, status, document_id, file_name,
+             submitted_at, organisation_name, signatory, content, updated_at)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, now())
+           ON CONFLICT (application_id, kind) DO UPDATE SET
+             label = EXCLUDED.label, status = EXCLUDED.status,
+             document_id = EXCLUDED.document_id, file_name = EXCLUDED.file_name,
+             submitted_at = EXCLUDED.submitted_at,
+             organisation_name = EXCLUDED.organisation_name,
+             signatory = EXCLUDED.signatory, content = EXCLUDED.content,
+             updated_at = now()`,
+          [id, e.kind, e.label, e.status, e.document_id ?? null,
+            e.file_name ?? null, e.submitted_at ?? null,
+            e.organisation_name ?? null, e.signatory ?? null, e.content ?? ""],
+        ),
+      ),
+      tx.query("DELETE FROM analyses WHERE application_id = $1", [id]),
+    ]);
+    return Response.json({ application: await serialize(db, id) });
   } catch {
     return dbUnavailable();
   }
-  if (!canAccess(db, id, session))
-    return Response.json({ error: "Not found" }, { status: 404 });
-  const upsert = db.prepare(
-    `INSERT INTO evidence_items
-      (application_id, kind, label, status, document_id, file_name, submitted_at, organisation_name, signatory, content, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
-     ON CONFLICT (application_id, kind) DO UPDATE SET
-      label=excluded.label, status=excluded.status, document_id=excluded.document_id,
-      file_name=excluded.file_name, submitted_at=excluded.submitted_at,
-      organisation_name=excluded.organisation_name, signatory=excluded.signatory,
-      content=excluded.content, updated_at=datetime('now')`,
-  );
-  const tx = db.transaction(
-    (items: Record<string, string | null | undefined>[]) => {
-      for (const e of items) {
-        upsert.run(
-          id,
-          e.kind,
-          e.label,
-          e.status,
-          e.document_id ?? null,
-          e.file_name ?? null,
-          e.submitted_at ?? null,
-          e.organisation_name ?? null,
-          e.signatory ?? null,
-          e.content ?? "",
-        );
-      }
-      db.prepare("DELETE FROM analyses WHERE application_id = ?").run(id);
-    },
-  );
-  tx(
-    body.evidence as unknown as Record<string, string | null | undefined>[],
-  );
-  return Response.json({ application: serialize(db, id) });
 }

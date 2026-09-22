@@ -24,15 +24,21 @@ export async function POST(
   }
   let db;
   try {
-    db = getDb();
+    db = await getDb();
   } catch {
     return dbUnavailable();
   }
-  if (!db.prepare("SELECT 1 FROM applications WHERE id = ?").get(id)) {
+  const [application] = await db.query(
+    "SELECT 1 FROM applications WHERE id = $1",
+    [id],
+  );
+  if (!application) {
     return Response.json({ error: "Not found" }, { status: 404 });
   }
-  db.prepare(
-    "INSERT INTO applicant_requests (application_id, message, source, created_by) VALUES (?, ?, ?, ?)",
-  ).run(id, body.message, body.source, session.userId);
+  await db.query(
+    `INSERT INTO applicant_requests
+      (application_id, message, source, created_by) VALUES ($1, $2, $3, $4)`,
+    [id, body.message, body.source, session.userId],
+  );
   return Response.json({ ok: true });
 }

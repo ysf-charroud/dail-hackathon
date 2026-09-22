@@ -1,23 +1,19 @@
-import { getDb } from "@/lib/db";
+import { getDb, type Db } from "@/lib/db";
 import { currentSession, dbUnavailable } from "@/lib/api-auth";
 
 export const dynamic = "force-dynamic";
 
-function canWrite(
-  db: ReturnType<typeof getDb>,
+async function canWrite(
+  db: Db,
   appId: string,
   session: NonNullable<Awaited<ReturnType<typeof currentSession>>>,
-): boolean {
-  if (session.role === "reviewer") {
-    return Boolean(
-      db.prepare("SELECT 1 FROM applications WHERE id = ?").get(appId),
-    );
-  }
-  return Boolean(
-    db
-      .prepare("SELECT 1 FROM applications WHERE id = ? AND owner_id = ?")
-      .get(appId, session.userId),
+): Promise<boolean> {
+  const [row] = await db.query(
+    `SELECT 1 FROM applications
+     WHERE id = $1 AND ($2::text = 'reviewer' OR owner_id = $3)`,
+    [appId, session.role, session.userId],
   );
+  return Boolean(row);
 }
 
 export async function POST(
@@ -52,22 +48,18 @@ export async function POST(
   }
   let db;
   try {
-    db = getDb();
+    db = await getDb();
   } catch {
     return dbUnavailable();
   }
-  if (!canWrite(db, id, session))
+  if (!(await canWrite(db, id, session)))
     return Response.json({ error: "Not found" }, { status: 404 });
-  db.prepare(
-    "INSERT INTO analyses (application_id, status, summary, issues, source, analyzed_at, created_by) VALUES (?, ?, ?, ?, ?, ?, ?)",
-  ).run(
-    id,
-    body.status,
-    body.summary,
-    JSON.stringify(body.issues),
-    body.source,
-    body.analyzedAt ?? new Date().toISOString(),
-    session.userId,
+  await db.query(
+    `INSERT INTO analyses
+      (application_id, status, summary, issues, source, analyzed_at, created_by)
+     VALUES ($1, $2, $3, $4::jsonb, $5, $6, $7)`,
+    [id, body.status, body.summary, JSON.stringify(body.issues), body.source,
+      body.analyzedAt ?? new Date().toISOString(), session.userId],
   );
   return Response.json({ ok: true });
 }

@@ -246,7 +246,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  // Signed-in sessions use the local SQLite database; otherwise the seeded
+  // Signed-in sessions use Neon Postgres; otherwise the seeded
   // localStorage demo store is used (e.g. preview deployments).
   useEffect(() => {
     let cancelled = false;
