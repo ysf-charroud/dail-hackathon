@@ -13,7 +13,7 @@ export default function LoginPage() {
     <div className="flex flex-col items-center gap-5">
       <figure className="flex flex-col items-center gap-2">
         <Image
-          src="/images/schmitz-stiftungen-logo.jpg"
+          src="/images/schmitz-stiftungen-logo.png"
           alt="Schmitz-Stiftungen logo"
           width={222}
           height={56}

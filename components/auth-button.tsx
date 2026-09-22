@@ -49,27 +49,27 @@ export function AuthButton() {
     return (
       <Link
         href="/login"
-        className="inline-flex h-10 items-center gap-1.5 rounded-full border border-border bg-card px-4 text-sm font-medium shadow-lg shadow-blue-900/10"
+        className="inline-flex h-9 items-center gap-1.5 rounded-lg border bg-card px-3 text-sm font-medium transition-colors hover:bg-muted"
       >
-        <LogIn className="size-4" aria-hidden /> Sign in
+        <LogIn aria-hidden /> Sign in
       </Link>
     );
   }
 
   return (
-    <span className="inline-flex h-10 items-center gap-2 rounded-full border border-border bg-card py-1 pr-1 pl-4 text-sm shadow-lg shadow-blue-900/10">
-      <span className="max-w-40 truncate font-medium">
+    <span className="inline-flex h-9 items-center gap-2 rounded-lg border bg-card py-1 pr-1 pl-3 text-sm">
+      <span className="hidden max-w-36 truncate font-medium sm:block">
         {me.display_name || me.email}
       </span>
-      <span className="rounded-full bg-secondary px-2 py-0.5 text-xs font-semibold">
+      <span className="hidden text-xs text-muted-foreground md:inline">
         {me.role === "reviewer" ? "Reviewer" : "Applicant"}
       </span>
       <button
         onClick={() => void signOut()}
         aria-label="Sign out"
-        className="inline-flex size-8 items-center justify-center rounded-full bg-primary text-primary-foreground"
+        className="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
       >
-        <LogOut className="size-4" aria-hidden />
+        <LogOut aria-hidden />
       </button>
     </span>
   );

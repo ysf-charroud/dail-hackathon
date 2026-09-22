@@ -93,6 +93,13 @@ function textResult(text: string) {
   return { content: [{ type: "text" as const, text }] };
 }
 
+function dataResult<T extends Record<string, unknown>>(data: T, text: string) {
+  return {
+    content: [{ type: "text" as const, text }],
+    structuredContent: data,
+  };
+}
+
 /**
  * Register the 4 C07 evidence-review tools on an MCP server.
  * Shared by the hosted /api/mcp route (other LLMs call this over HTTP).
@@ -122,25 +129,21 @@ export function registerC07Tools(server: McpServer): void {
         submittedAt: a.submittedAt,
         completionPercent: completion(a),
       }));
+      const output = {
+        total,
+        count: applications.length,
+        offset,
+        has_more: offset + slice.length < total,
+        ...(offset + slice.length < total
+          ? { next_offset: offset + slice.length }
+          : {}),
+        applications,
+      };
       if (response_format === "json") {
-        return textResult(
-          JSON.stringify(
-            {
-              total,
-              count: applications.length,
-              offset,
-              has_more: offset + slice.length < total,
-              ...(offset + slice.length < total
-                ? { next_offset: offset + slice.length }
-                : {}),
-              applications,
-            },
-            null,
-            2,
-          ),
-        );
+        return dataResult(output, JSON.stringify(output, null, 2));
       }
-      return textResult(
+      return dataResult(
+        output,
         [
           `# C07 applications (${applications.length}/${total})`,
           ``,
@@ -168,10 +171,12 @@ export function registerC07Tools(server: McpServer): void {
     async ({ id, response_format }) => {
       const app = findApp(id);
       if (!app) return { ...textResult(unknownIdError(id)), isError: true };
+      const output = { application: app };
       if (response_format === "json") {
-        return textResult(JSON.stringify({ application: app }, null, 2));
+        return dataResult(output, JSON.stringify(output, null, 2));
       }
-      return textResult(
+      return dataResult(
+        output,
         [
           appCard(app),
           ``,
@@ -206,9 +211,9 @@ export function registerC07Tools(server: McpServer): void {
       const { analysis, source } = await analyzeWithLlm(app);
       const output = { applicationId: app.id, source, ...analysis };
       if (response_format === "json") {
-        return textResult(JSON.stringify(output, null, 2));
+        return dataResult(output, JSON.stringify(output, null, 2));
       }
-      return textResult(analysisCard(app, analysis, source));
+      return dataResult(output, analysisCard(app, analysis, source));
     },
   );
 
@@ -242,9 +247,10 @@ export function registerC07Tools(server: McpServer): void {
         message,
       };
       if (response_format === "json") {
-        return textResult(JSON.stringify(output, null, 2));
+        return dataResult(output, JSON.stringify(output, null, 2));
       }
-      return textResult(
+      return dataResult(
+        output,
         [
           `# Draft request: ${app.applicantName} (${app.id})`,
           ``,

@@ -12,6 +12,8 @@ const handler = createMcpHandler(
   },
   {
     serverInfo: { name: C07_SERVER_NAME, version: C07_SERVER_VERSION },
+    instructions:
+      "Use c07_list_applications first. These tools inspect fictional evidence, identify missing or inconsistent information, and draft requests. They never approve or reject an application. A human reviewer makes every final decision.",
   },
 );
 

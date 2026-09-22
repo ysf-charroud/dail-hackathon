@@ -65,6 +65,22 @@ all seed organisations/documents/people.
   (`users.role`) directly.
 - No real applicant contact — requests never leave the browser.
 
+## Connect an AI assistant with MCP
+
+The hosted MCP connection is:
+
+```text
+https://dail.ysfff.online/api/mcp
+```
+
+In an MCP-compatible assistant, add a remote server named `ReviewOS`, paste
+that address, and select Streamable HTTP if a transport is requested. Restart
+the assistant, then ask: `Use ReviewOS to list the applications.`
+
+The in-app guide at `/mcp` includes copy-ready settings for Claude Desktop and
+OpenCode. The MCP tools use synthetic data and cannot approve, reject, edit, or
+send anything.
+
 ## Next validation test
 
 With `DEEPSEEK_API_KEY` set, run one live analysis per application and

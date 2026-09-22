@@ -37,6 +37,7 @@ import {
 } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
+import { cn } from "@/lib/utils";
 
 export default function ApplicationDetailPage() {
   const params = useParams<{ id: string }>();
@@ -162,7 +163,7 @@ export default function ApplicationDetailPage() {
   };
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center gap-2">
         <Link href="/applications">
           <Button variant="ghost" size="sm">
@@ -186,24 +187,25 @@ export default function ApplicationDetailPage() {
         </Button>
       </div>
 
-      <div
-        className={`rounded-xl border p-5 ${
+      <section
+        className={cn(
+          "border-l-4 bg-card px-5 py-5 shadow-sm ring-1 ring-foreground/10",
           app.status === "review_ready"
-            ? "border-emerald-600/20 bg-emerald-500/10"
+            ? "border-l-emerald-600"
             : app.status === "missing_evidence"
-              ? "border-destructive/20 bg-destructive/5"
+              ? "border-l-destructive"
               : app.status === "needs_clarification"
-                ? "border-amber-600/20 bg-amber-500/10"
-                : "border bg-card"
-        }`}
+                ? "border-l-amber-600"
+                : "border-l-primary",
+        )}
       >
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-4">
           {app.status === "review_ready" ? (
             <CheckCircle2 className="size-8 text-emerald-600" aria-hidden />
           ) : null}
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-xl font-bold tracking-tight">
+              <h1 className="text-2xl font-semibold tracking-tight">
                 {app.applicantName}
               </h1>
               <StatusBadge status={app.status} />
@@ -220,7 +222,7 @@ export default function ApplicationDetailPage() {
                       : "This application has not been analyzed yet. Run AI analysis to check readiness."}
             </p>
           </div>
-          <div className="w-44 shrink-0">
+          <div className="w-full shrink-0 border-t pt-4 sm:w-48 sm:border-t-0 sm:border-l sm:pt-0 sm:pl-5">
             <div className="mb-1 flex justify-between text-xs font-medium text-muted-foreground">
               <span>Evidence</span>
               <span>{pct}%</span>
@@ -231,7 +233,7 @@ export default function ApplicationDetailPage() {
             </p>
           </div>
         </div>
-      </div>
+      </section>
 
       {error ? (
         <Alert variant="destructive">
@@ -241,7 +243,7 @@ export default function ApplicationDetailPage() {
         </Alert>
       ) : null}
 
-      <div className="grid gap-5 lg:grid-cols-[1fr_1.2fr]">
+      <div className="grid items-start gap-6 lg:grid-cols-[0.88fr_1.25fr]">
         <div className="flex flex-col gap-5">
           <Card>
             <CardHeader>
@@ -268,7 +270,7 @@ export default function ApplicationDetailPage() {
                 {app.contact}
               </p>
               <Separator />
-              <p className="rounded-lg bg-muted p-3 text-muted-foreground">
+              <p className="border-l-2 border-primary bg-muted/60 p-3 text-muted-foreground">
                 {app.summary}
               </p>
               {app.reviewerNotes?.map((note) => (

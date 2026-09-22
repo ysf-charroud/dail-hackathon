@@ -2,213 +2,211 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import {
   ArrowRight,
-  Blocks,
   CheckCircle2,
-  Globe,
-  MonitorDown,
-  ShieldCheck,
+  CircleHelp,
+  Copy,
+  LockKeyhole,
+  MessageSquareText,
+  PlugZap,
 } from "lucide-react";
 import { CopyBlock } from "@/components/mcp-config";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { MCP_ENDPOINT } from "@/lib/mcp-endpoint";
 
 export const metadata: Metadata = {
-  title: "MCP setup — use other LLMs with ReviewOS",
-  description:
-    "Connect Claude Desktop or any MCP client to ReviewOS.",
+  title: "Connect ReviewOS to your AI assistant",
+  description: "A simple guide to connecting an MCP-compatible AI assistant.",
 };
 
-const TOOLS = [
-  {
-    name: "c07_list_applications",
-    body: "List applications with completion %. Start here to get valid APP-xxx ids.",
-  },
-  {
-    name: "c07_get_application",
-    body: "Full record + evidence excerpts for one id, e.g. APP-2.",
-  },
-  {
-    name: "c07_analyze_evidence",
-    body: "Live POST /api/analyze with deterministic fallback. Returns status + issues.",
-  },
-  {
-    name: "c07_draft_applicant_request",
-    body: "Live POST /api/draft-request with template fallback. Drafts text, sends nothing.",
-  },
-];
-
-const DEPLOYED_URL =
-  "https://dail.ysfff.online";
-
-const CLAUDE_JSON = `{
+const CLAUDE_CONFIG = `{
   "mcpServers": {
-    "c07-evidence": {
-      "command": "node",
-      "args": ["/absolute/path/to/dail-hackathon/mcp-server/dist/index.js"],
-      "env": { "C07_BASE_URL": "${DEPLOYED_URL}" }
+    "reviewos": {
+      "command": "npx",
+      "args": ["-y", "mcp-remote", "${MCP_ENDPOINT}"]
     }
   }
 }`;
 
-const EXAMPLE_SESSION = `1. c07_list_applications → {} → see APP-1 / 2 / 3
-2. c07_get_application → {"id": "APP-2"} → spot the org-name mismatch
-3. c07_analyze_evidence → {"id": "APP-2"} → missing_evidence
-4. c07_draft_applicant_request → {"id": "APP-2"} → copy the draft
-5. Finally: c07_analyze_evidence → {"id": "APP-3"} → review_ready`;
+const OPENCODE_CONFIG = `{
+  "mcp": {
+    "reviewos": {
+      "type": "remote",
+      "url": "${MCP_ENDPOINT}",
+      "enabled": true
+    }
+  }
+}`;
+
+const TEST_PROMPT =
+  "Use ReviewOS to list the applications, then explain what APP-2 still needs. Do not approve or reject it.";
 
 export default function McpSetupPage() {
   return (
-    <div className="mx-auto flex w-full max-w-5xl flex-col px-5 py-10">
-      <div className="flex flex-wrap items-center gap-2">
-        <Badge variant="secondary">MCP server</Badge>
-      </div>
-      <h1 className="mt-4 max-w-2xl text-3xl font-extrabold tracking-tight text-balance sm:text-4xl">
-        Use other LLMs with ReviewOS
-      </h1>
-      <p className="mt-3 max-w-2xl text-base leading-relaxed text-muted-foreground">
-        The <span className="font-mono text-sm">c07-evidence-mcp-server</span>{" "}
-        exposes the evidence-review prototype to any MCP client — Claude
-        Desktop, VS Code, or any MCP client — as 4 read-only tools. It calls the
-        live Next.js API first and falls back to the deterministic checker when
-        the app is offline, so the demo never breaks.
-      </p>
-      <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground">
-        Live deployment:{" "}
-        <Link
-          href={DEPLOYED_URL}
-          target="_blank"
-          rel="noreferrer"
-          className="font-mono text-xs break-all text-blue-700 underline-offset-4 hover:underline dark:text-blue-400"
-        >
-          {DEPLOYED_URL}
-        </Link>{" "}
-        — point{" "}
-        <span className="font-mono text-xs">C07_BASE_URL</span> at it and no
-        local server is needed. Note: this preview URL is behind Vercel login,
-        so remote clients get the deterministic fallback (same verdicts,
-        source shown as deterministic) — run the app locally for live-LLM
-        mode.
-      </p>
-
-      {/* ── Tools ─────────────────────────────────────────── */}
-      <section aria-label="Available tools" className="mt-8">
-        <h2 className="flex items-center gap-2 text-lg font-bold">
-          <Blocks className="size-5" aria-hidden /> 4 tools, one workflow
-        </h2>
-        <div className="mt-4 grid gap-3 sm:grid-cols-2">
-          {TOOLS.map((t, i) => (
-            <Card key={t.name}>
-              <CardContent className="flex items-start gap-3 pt-5">
-                <span
-                  aria-hidden="true"
-                  className="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground"
-                >
-                  {i + 1}
-                </span>
-                <span>
-                  <span className="block font-mono text-sm font-bold">
-                    {t.name}
-                  </span>
-                  <span className="mt-0.5 block text-[13px] leading-snug text-muted-foreground">
-                    {t.body}
-                  </span>
-                </span>
-              </CardContent>
-            </Card>
-          ))}
+    <main className="mx-auto w-full max-w-5xl px-5 py-10 sm:py-14">
+      <section className="overflow-hidden rounded-2xl border bg-card">
+        <div className="grid gap-8 p-6 sm:p-9 lg:grid-cols-[1fr_19rem] lg:items-center">
+          <div>
+            <Badge variant="secondary">Setup guide</Badge>
+            <h1 className="mt-4 max-w-2xl text-3xl font-extrabold tracking-tight text-balance sm:text-4xl">
+              Connect ReviewOS to your AI assistant
+            </h1>
+            <p className="mt-3 max-w-2xl text-base leading-relaxed text-muted-foreground">
+              MCP is a secure connection that lets an AI assistant use the
+              ReviewOS evidence tools. You only need to copy one address and
+              add it to your assistant. No API key is required for this demo.
+            </p>
+          </div>
+          <div className="rounded-xl bg-primary p-5 text-primary-foreground">
+            <PlugZap className="size-6" aria-hidden />
+            <p className="mt-4 text-sm font-semibold">Your connection address</p>
+            <p className="mt-1 break-all text-sm leading-relaxed opacity-85">
+              {MCP_ENDPOINT}
+            </p>
+          </div>
         </div>
       </section>
 
-      {/* ── Setup options ─────────────────────────────────── */}
-      <section aria-label="Setup options" className="mt-10">
-        <h2 className="text-lg font-bold">Connect in under 5 minutes</h2>
+      <section aria-labelledby="setup-heading" className="mt-10">
+        <h2 id="setup-heading" className="text-xl font-bold">
+          Set it up in three steps
+        </h2>
+        <div className="mt-4 grid gap-4 lg:grid-cols-3">
+          <Card>
+            <CardHeader>
+              <span className="text-sm font-semibold text-primary">Step 1</span>
+              <CardTitle className="text-base">Copy the address</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <CopyBlock label="ReviewOS MCP endpoint" text={MCP_ENDPOINT} />
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <span className="text-sm font-semibold text-primary">Step 2</span>
+              <CardTitle className="text-base">Add it to your assistant</CardTitle>
+            </CardHeader>
+            <CardContent className="text-sm leading-relaxed text-muted-foreground">
+              Open your assistant&apos;s MCP or Connections settings, add a remote
+              server, name it <strong className="text-foreground">ReviewOS</strong>,
+              and paste the address. If it asks for a transport, choose
+              <strong className="text-foreground"> Streamable HTTP</strong>.
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <span className="text-sm font-semibold text-primary">Step 3</span>
+              <CardTitle className="text-base">Restart and test</CardTitle>
+            </CardHeader>
+            <CardContent className="text-sm leading-relaxed text-muted-foreground">
+              Restart your assistant. Look for four ReviewOS tools, then send
+              the test prompt below. Your assistant should find APP-2 and
+              explain its missing evidence.
+            </CardContent>
+          </Card>
+        </div>
+      </section>
+
+      <section aria-labelledby="config-heading" className="mt-10">
+        <div className="flex items-center gap-3">
+          <Copy className="size-5 text-primary" aria-hidden />
+          <div>
+            <h2 id="config-heading" className="text-xl font-bold">
+              Ready-made settings
+            </h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Use these only if your assistant asks you to edit a settings file.
+            </p>
+          </div>
+        </div>
         <div className="mt-4 grid gap-4 lg:grid-cols-2">
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-base">
-                <MonitorDown className="size-4" aria-hidden /> Claude Desktop
-              </CardTitle>
+              <CardTitle className="text-base">Claude Desktop</CardTitle>
             </CardHeader>
-            <CardContent className="flex flex-col gap-3">
-              <p className="text-[13px] leading-snug text-muted-foreground">
-                Add to{" "}
-                <span className="font-mono text-xs">
-                  claude_desktop_config.json
-                </span>
-                , replacing the path with your checkout. It points at the live
-                deployment, so no local server is needed — swap in{" "}
-                <span className="font-mono text-xs">
-                  http://localhost:3000
-                </span>{" "}
-                to use your own dev server instead.
+            <CardContent className="space-y-3">
+              <p className="text-sm leading-relaxed text-muted-foreground">
+                Open Claude&apos;s developer settings, choose Edit Config, paste
+                this inside the file, save it, then fully restart Claude.
               </p>
-              <CopyBlock label="claude_desktop_config.json" text={CLAUDE_JSON} />
+              <CopyBlock label="Claude configuration" text={CLAUDE_CONFIG} />
             </CardContent>
           </Card>
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-base">
-                <Globe className="size-4" aria-hidden /> Remote HTTP
-              </CardTitle>
+              <CardTitle className="text-base">OpenCode</CardTitle>
             </CardHeader>
-            <CardContent className="flex flex-col gap-3">
-              <p className="text-[13px] leading-snug text-muted-foreground">
-                Streamable HTTP endpoint for web clients and shared demos —
-                paste the URL straight into your MCP client:
+            <CardContent className="space-y-3">
+              <p className="text-sm leading-relaxed text-muted-foreground">
+                Add this block to your OpenCode configuration, save the file,
+                then restart OpenCode.
               </p>
-              <CopyBlock label="MCP server URL" text={`${DEPLOYED_URL}/api/mcp`} />
-              <CopyBlock
-                label="client config (remote)"
-                text={`{\n  "c07-evidence-remote": {\n    "url": "${DEPLOYED_URL}/api/mcp"\n  }\n}`}
-              />
-              <p className="text-[13px] leading-snug text-muted-foreground">
-                Running the app yourself? Use{" "}
-                <span className="font-mono text-xs">
-                  http://localhost:3000/api/mcp
-                </span>{" "}
-                instead.
-              </p>
+              <CopyBlock label="OpenCode configuration" text={OPENCODE_CONFIG} />
             </CardContent>
           </Card>
         </div>
       </section>
 
-      {/* ── Example session ─────────────────────────────── */}
-      <section aria-label="Example session" className="mt-10">
+      <section
+        aria-labelledby="test-heading"
+        className="mt-10 grid gap-4 lg:grid-cols-[1fr_18rem]"
+      >
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <CheckCircle2 className="size-4" aria-hidden /> Example
-              walkthrough
+            <CardTitle
+              id="test-heading"
+              className="flex items-center gap-2 text-base"
+            >
+              <MessageSquareText className="size-4" aria-hidden /> Test the connection
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <CopyBlock label="example tool calls" text={EXAMPLE_SESSION} />
+            <CopyBlock label="Message to send" text={TEST_PROMPT} />
           </CardContent>
         </Card>
-        <Alert className="mt-4">
-          <ShieldCheck aria-hidden />
-          <AlertTitle>Human oversight, by design</AlertTitle>
+        <Alert>
+          <LockKeyhole aria-hidden />
+          <AlertTitle>Human review stays in control</AlertTitle>
           <AlertDescription>
-            These tools only report readiness and issues — they never approve
-            or reject. All content is sample data.
+            The tools can inspect sample evidence and draft a message. They
+            cannot approve, reject, edit, or send anything.
           </AlertDescription>
         </Alert>
-        <div className="mt-6 flex flex-wrap gap-3">
-          <Link href="/applications" className={buttonVariants()}>
-            Get started
-            <ArrowRight data-icon="inline-end" aria-hidden />
-          </Link>
-          <Link
-            href="/applications/APP-2"
-            className={buttonVariants({ variant: "outline" })}
-          >
-            See an example
-          </Link>
-        </div>
       </section>
-    </div>
+
+      <section
+        aria-labelledby="help-heading"
+        className="mt-10 rounded-xl border bg-muted/30 p-5 sm:p-6"
+      >
+        <h2 id="help-heading" className="flex items-center gap-2 font-bold">
+          <CircleHelp className="size-5" aria-hidden /> If it does not connect
+        </h2>
+        <ul className="mt-3 space-y-2 text-sm leading-relaxed text-muted-foreground">
+          <li>
+            Check that the copied address ends with{" "}
+            <strong className="text-foreground">/api/mcp</strong>.
+          </li>
+          <li>Fully close and reopen your assistant after changing its settings.</li>
+          <li>If you edited JSON, check that every bracket and comma is still present.</li>
+          <li>
+            Opening the address in a normal browser may show an error. That is
+            expected because an MCP client must make the connection.
+          </li>
+        </ul>
+      </section>
+
+      <div className="mt-8 flex flex-wrap items-center gap-3">
+        <Link href="/applications" className={buttonVariants()}>
+          View sample applications
+          <ArrowRight data-icon="inline-end" aria-hidden />
+        </Link>
+        <span className="flex items-center gap-2 text-sm text-muted-foreground">
+          <CheckCircle2 className="size-4 text-green-600" aria-hidden />
+          Four read-only tools, using synthetic data
+        </span>
+      </div>
+    </main>
   );
 }

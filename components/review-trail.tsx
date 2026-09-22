@@ -25,6 +25,7 @@ function formatTime(iso: string): string {
       month: "short",
       hour: "2-digit",
       minute: "2-digit",
+      timeZone: "Africa/Casablanca",
     });
   } catch {
     return iso;

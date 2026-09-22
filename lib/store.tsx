@@ -89,8 +89,7 @@ const Ctx = createContext<{
   reset: (id: string) => void;
 } | null>(null);
 
-function merge(): AppState[] {
-  const saved = load();
+function merge(saved: Record<string, Persisted> = {}): AppState[] {
   return SEED_APPLICATIONS.map((seed) => {
     const s = saved[seed.id];
     const evidence = s?.evidence ?? seed.evidence;
@@ -210,19 +209,41 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [remote, setRemote] = useState(false);
   const [role, setRole] = useState<"reviewer" | "applicant" | null>(null);
   const [trail, setTrail] = useState<Record<string, TrailEvent[]>>(() => {
-    const loaded = loadTrail();
-    const next = { ...loaded };
+    const next: Record<string, TrailEvent[]> = {};
     for (const seed of SEED_APPLICATIONS) {
-      if (!next[seed.id] || next[seed.id].length === 0) {
-        next[seed.id] = [receivedEvent(seed)];
-      }
+      next[seed.id] = [receivedEvent(seed)];
     }
     return next;
   });
+  const [hydrated, setHydrated] = useState(false);
   const remoteRef = useRef(false);
 
   const appendTrail = useCallback((id: string, event: TrailEvent) => {
     setTrail((prev) => ({ ...prev, [id]: [...(prev[id] ?? []), event] }));
+  }, []);
+
+  // Keep the server render and first client render deterministic, then restore
+  // browser-only demo state after hydration.
+  useEffect(() => {
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (cancelled) return;
+      setApps(merge(load()));
+      const loaded = loadTrail();
+      setTrail(() => {
+        const next = { ...loaded };
+        for (const seed of SEED_APPLICATIONS) {
+          if (!next[seed.id] || next[seed.id].length === 0) {
+            next[seed.id] = [receivedEvent(seed)];
+          }
+        }
+        return next;
+      });
+      setHydrated(true);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   // Signed-in sessions use the local SQLite database; otherwise the seeded
@@ -256,7 +277,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (remoteRef.current) return; // database owns persistence when signed in
+    if (!hydrated || remoteRef.current) return; // database owns persistence when signed in
     const persist: Record<string, Persisted> = {};
     for (const a of apps) {
       persist[a.id] = {
@@ -270,16 +291,17 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     } catch {
       /* storage full/blocked — demo continues in memory */
     }
-  }, [apps]);
+  }, [apps, hydrated]);
 
   // Review activity journal (local session record, both modes).
   useEffect(() => {
+    if (!hydrated) return;
     try {
       localStorage.setItem(TRAIL_KEY, JSON.stringify(trail));
     } catch {
       /* storage full/blocked — demo continues in memory */
     }
-  }, [trail]);
+  }, [hydrated, trail]);
 
   const updateEvidence = useCallback(
     (id: string, evidence: EvidenceItem[]) => {

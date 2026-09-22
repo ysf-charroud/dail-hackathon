@@ -39,7 +39,10 @@ export function CopyBlock({ label, text }: { label: string; text: string }) {
           )}
         </Button>
       </div>
-      <pre className="overflow-x-auto p-3 font-mono text-xs leading-relaxed">
+      <pre
+        className="overflow-x-auto p-3 font-mono text-xs leading-relaxed"
+        tabIndex={0}
+      >
         {text}
       </pre>
     </div>
